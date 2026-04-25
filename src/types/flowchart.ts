@@ -1,3 +1,5 @@
+import type { Node } from '@xyflow/react'
+
 export type FlowNodeType =
   | 'terminal'
   | 'process'
@@ -6,7 +8,7 @@ export type FlowNodeType =
   | 'output'
   | 'function'
 
-export interface FlowNodeData {
+export interface FlowNodeData extends Record<string, unknown> {
   label: string
   nodeType: FlowNodeType
   line?: number
@@ -18,5 +20,7 @@ export interface FlowNodeData {
   condition?: string
   outputContent?: string
   loopCount?: number
-  [key: string]: unknown
 }
+
+// React Flow NodeProps 제네릭에 사용하는 완전한 노드 타입
+export type AppFlowNode = Node<FlowNodeData>
