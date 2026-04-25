@@ -2,6 +2,7 @@ import { css } from 'styled-system/css'
 import Layout from './app/layout'
 import { useExecutionStore } from './stores/execution-store'
 import CodeEditor from './components/editor/CodeEditor'
+import FlowCanvas from './components/flowchart/FlowCanvas'
 
 function Header() {
   const { status, setStatus } = useExecutionStore()
@@ -87,7 +88,7 @@ export default function App() {
     <Layout
       header={<Header />}
       editor={<CodeEditor />}
-      flowchart={<Placeholder label="순서도 캔버스 (React Flow)" />}
+      flowchart={<FlowCanvas />}
       console={<Placeholder label="실행 결과 콘솔" />}
       variables={<Placeholder label="변수 상태" />}
       footer={<Footer />}
