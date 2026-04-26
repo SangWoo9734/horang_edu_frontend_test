@@ -1,136 +1,114 @@
 # Hook Extraction Patterns
 
-This document provides detailed guidance on extracting custom hooks from complex components in Dify.
+복잡한 컴포넌트에서 커스텀 훅을 추출하는 가이드.
 
-## When to Extract Hooks
+## When to Extract
 
-Extract a custom hook when you identify:
-
-1. **Coupled state groups** - Multiple `useState` hooks that are always used together
-1. **Complex effects** - `useEffect` with multiple dependencies or cleanup logic
-1. **Business logic** - Data transformations, validations, or calculations
-1. **Reusable patterns** - Logic that appears in multiple components
+1. **Coupled state groups** — 항상 같이 쓰이는 여러 useState
+2. **Complex effects** — 여러 의존성 또는 클린업 로직이 있는 useEffect
+3. **Business logic** — 데이터 변환, 검증, 계산 로직
+4. **Reusable patterns** — 여러 컴포넌트에서 반복되는 로직
 
 ## Extraction Process
 
-### Step 1: Identify State Groups
+### Step 1: 상태 그룹 식별
 
-Look for state variables that are logically related:
+논리적으로 관련된 상태 변수를 찾는다:
 
 ```typescript
-// ❌ These belong together - extract to hook
-const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
-const [completionParams, setCompletionParams] = useState<FormValue>({})
-const [modelModeType, setModelModeType] = useState<ModelModeType>(...)
+// ❌ 이 상태들은 함께 묶여야 함
+const [nodes, setNodes] = useState<Node[]>([]);
+const [edges, setEdges] = useState<Edge[]>([]);
+const [lastEditSource, setLastEditSource] = useState<"code" | "flowchart">(
+  "code",
+);
 
-// These are model-related state that should be in useModelConfig()
+// → useFlowSync 훅으로 추출
 ```
 
-### Step 2: Identify Related Effects
+### Step 2: 관련 Effect 식별
 
-Find effects that modify the grouped state:
+그룹화된 상태를 변경하는 effect를 찾는다:
 
 ```typescript
-// ❌ These effects belong with the state above
+// ❌ 이 effect는 위 상태와 함께 훅으로 들어가야 함
 useEffect(() => {
-  if (hasFetchedDetail && !modelModeType) {
-    const mode = currModel?.model_properties.mode
-    if (mode) {
-      const newModelConfig = produce(modelConfig, (draft) => {
-        draft.mode = mode
-      })
-      setModelConfig(newModelConfig)
-    }
-  }
-}, [textGenerationModelList, hasFetchedDetail, modelModeType, currModel])
+  if (lastEditSource !== "code") return;
+  const ast = parseOptimistically(code);
+  const { nodes, edges } = astToFlowNodes(ast);
+  setNodes(nodes);
+  setEdges(edges);
+}, [code, lastEditSource]);
 ```
 
-### Step 3: Create the Hook
+### Step 3: 훅 생성
 
 ```typescript
-// hooks/use-model-config.ts
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ModelConfig } from '@/models/debug'
-import { produce } from 'immer'
-import { useEffect, useState } from 'react'
-import { ModelModeType } from '@/types/app'
-
-interface UseModelConfigParams {
-  initialConfig?: Partial<ModelConfig>
-  currModel?: { model_properties?: { mode?: ModelModeType } }
-  hasFetchedDetail: boolean
+// hooks/use-flow-sync.ts
+interface UseFlowSyncParams {
+  code: string;
 }
 
-interface UseModelConfigReturn {
-  modelConfig: ModelConfig
-  setModelConfig: (config: ModelConfig) => void
-  completionParams: FormValue
-  setCompletionParams: (params: FormValue) => void
-  modelModeType: ModelModeType
+interface UseFlowSyncReturn {
+  nodes: Node[];
+  edges: Edge[];
+  setNodes: (nodes: Node[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  lastEditSource: "code" | "flowchart";
+  updateFromFlowchart: (nodes: Node[], edges: Edge[]) => void;
 }
 
-export const useModelConfig = ({
-  initialConfig,
-  currModel,
-  hasFetchedDetail,
-}: UseModelConfigParams): UseModelConfigReturn => {
-  const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    provider: 'langgenius/openai/openai',
-    model_id: 'gpt-3.5-turbo',
-    mode: ModelModeType.unset,
-    // ... default values
-    ...initialConfig,
-  })
-  
-  const [completionParams, setCompletionParams] = useState<FormValue>({})
-  
-  const modelModeType = modelConfig.mode
+export const useFlowSync = ({ code }: UseFlowSyncParams): UseFlowSyncReturn => {
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [lastEditSource, setLastEditSource] = useState<"code" | "flowchart">(
+    "code",
+  );
 
-  // Fill old app data missing model mode
+  // 코드 → 순서도 동기화
   useEffect(() => {
-    if (hasFetchedDetail && !modelModeType) {
-      const mode = currModel?.model_properties?.mode
-      if (mode) {
-        setModelConfig(produce(modelConfig, (draft) => {
-          draft.mode = mode
-        }))
-      }
-    }
-  }, [hasFetchedDetail, modelModeType, currModel])
+    if (lastEditSource !== "code") return;
+    const ast = parseOptimistically(code);
+    const result = astToFlowNodes(ast);
+    setNodes(result.nodes);
+    setEdges(result.edges);
+  }, [code, lastEditSource]);
+
+  const updateFromFlowchart = useCallback(
+    (newNodes: Node[], newEdges: Edge[]) => {
+      setLastEditSource("flowchart");
+      setNodes(newNodes);
+      setEdges(newEdges);
+    },
+    [],
+  );
 
   return {
-    modelConfig,
-    setModelConfig,
-    completionParams,
-    setCompletionParams,
-    modelModeType,
-  }
-}
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    lastEditSource,
+    updateFromFlowchart,
+  };
+};
 ```
 
-### Step 4: Update Component
+### Step 4: 컴포넌트 업데이트
 
 ```typescript
-// Before: 50+ lines of state management
-const Configuration: FC = () => {
-  const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
-  // ... lots of related state and effects
+// Before: 50줄의 상태 관리 로직
+const FlowCanvas: FC = () => {
+  const [nodes, setNodes] = useState<Node[]>([])
+  // ... 많은 관련 상태와 effect
 }
 
-// After: Clean component
-const Configuration: FC = () => {
-  const {
-    modelConfig,
-    setModelConfig,
-    completionParams,
-    setCompletionParams,
-    modelModeType,
-  } = useModelConfig({
-    currModel,
-    hasFetchedDetail,
-  })
-  
-  // Component now focuses on UI
+// After: 깔끔한 컴포넌트
+const FlowCanvas: FC = () => {
+  const { nodes, edges, updateFromFlowchart } = useFlowSync({ code })
+  const { highlightedId } = useExecutionHighlight(nodes)
+
+  return <ReactFlow nodes={nodes} edges={edges} />
 }
 ```
 
@@ -138,180 +116,185 @@ const Configuration: FC = () => {
 
 ### Hook Names
 
-- Use `use` prefix: `useModelConfig`, `useDatasetConfig`
-- Be specific: `useAdvancedPromptConfig` not `usePrompt`
-- Include domain: `useWorkflowVariables`, `useMCPServer`
+- `use` 접두사: `useFlowSync`, `useExecutionControl`
+- 구체적으로: `useExecutionHighlight` not `useHighlight`
+- 도메인 포함: `useEditorValidation`, `useNodeForm`
 
 ### File Names
 
-- Kebab-case: `use-model-config.ts`
-- Place in `hooks/` subdirectory when multiple hooks exist
-- Place alongside component for single-use hooks
+- kebab-case: `use-flow-sync.ts`
+- 여러 훅이 있으면 `hooks/` 디렉토리에 배치
 
-### Return Type Names
+### Type Names
 
-- Suffix with `Return`: `UseModelConfigReturn`
-- Suffix params with `Params`: `UseModelConfigParams`
+- Return 타입: `UseFlowSyncReturn`
+- Params 타입: `UseFlowSyncParams`
 
-## Common Hook Patterns in Dify
+## 이 프로젝트의 핵심 훅 패턴
 
-### 1. Data Fetching Hook (React Query)
+### 1. 실행 제어 훅
 
 ```typescript
-// Pattern: Use @tanstack/react-query for data fetching
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { get } from '@/service/base'
-import { useInvalid } from '@/service/use-base'
+// hooks/use-execution-control.ts
+export const useExecutionControl = () => {
+  const { code } = useEditorStore();
+  const { setOutput, setVariables, setIsRunning, reset } = useExecutionStore();
+  const controllerRef = useRef<AbortController | null>(null);
 
-const NAME_SPACE = 'appConfig'
+  const handleRun = useCallback(
+    async (delay: number) => {
+      reset();
+      setIsRunning(true);
+      controllerRef.current = new AbortController();
 
-// Query keys for cache management
-export const appConfigQueryKeys = {
-  detail: (appId: string) => [NAME_SPACE, 'detail', appId] as const,
-}
+      const session = new YaksokSession({
+        stdout: (msg) => setOutput((prev) => [...prev, msg]),
+        signal: controllerRef.current.signal,
+        events: {
+          variableSet: ({ name, value }) =>
+            setVariables((prev) => ({ ...prev, [name]: value })),
+          runningCode: (start) => {
+            /* 하이라이트 업데이트 */
+          },
+        },
+      });
 
-// Main data hook
-export const useAppConfig = (appId: string) => {
-  return useQuery({
-    enabled: !!appId,
-    queryKey: appConfigQueryKeys.detail(appId),
-    queryFn: () => get<AppDetailResponse>(`/apps/${appId}`),
-    select: data => data?.model_config || null,
-  })
-}
+      session.addModule("main", code, { executionDelay: delay });
+      try {
+        await session.runModule("main");
+      } catch (e) {
+        if (e.name !== "AbortError")
+          setOutput((prev) => [...prev, `에러: ${e.message}`]);
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    [code],
+  );
 
-// Invalidation hook for refreshing data
-export const useInvalidAppConfig = () => {
-  return useInvalid([NAME_SPACE])
-}
+  const handleStop = useCallback(() => {
+    controllerRef.current?.abort();
+  }, []);
 
-// Usage in component
-const Component = () => {
-  const { data: config, isLoading, error, refetch } = useAppConfig(appId)
-  const invalidAppConfig = useInvalidAppConfig()
-  
-  const handleRefresh = () => {
-    invalidAppConfig() // Invalidates cache and triggers refetch
-  }
-  
-  return <div>...</div>
-}
+  const handlePause = useCallback(() => {
+    // session.pause() 활용
+  }, []);
+
+  return { handleRun, handleStop, handlePause };
+};
 ```
 
-### 2. Form State Hook
+### 2. 에디터 검증 훅
 
 ```typescript
-// Pattern: Form state + validation + submission
-export const useConfigForm = (initialValues: ConfigFormValues) => {
-  const [values, setValues] = useState(initialValues)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+// hooks/use-editor-validation.ts
+export const useEditorValidation = (code: string) => {
+  const [errors, setErrors] = useState<ValidationError[]>([]);
 
-  const validate = useCallback(() => {
-    const newErrors: Record<string, string> = {}
-    if (!values.name) newErrors.name = 'Name is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }, [values])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const codeFile = new CodeFile("main", code);
+      const { errors: validationErrors } = codeFile.validate();
+      setErrors(validationErrors);
+    }, 300); // debounce
 
-  const handleChange = useCallback((field: string, value: any) => {
-    setValues(prev => ({ ...prev, [field]: value }))
-  }, [])
+    return () => clearTimeout(timer);
+  }, [code]);
 
-  const handleSubmit = useCallback(async (onSubmit: (values: ConfigFormValues) => Promise<void>) => {
-    if (!validate()) return
-    setIsSubmitting(true)
-    try {
-      await onSubmit(values)
-    } finally {
-      setIsSubmitting(false)
+  return { errors };
+};
+```
+
+### 3. 노드 폼 훅
+
+```typescript
+// hooks/use-node-form.ts
+type NodeFormType = "process" | "output" | "decision" | "loop";
+
+interface NodeFormValues {
+  type: NodeFormType;
+  variableName?: string;
+  value?: string;
+  condition?: string;
+  outputText?: string;
+  loopCount?: number;
+}
+
+export const useNodeForm = (initialValues?: Partial<NodeFormValues>) => {
+  const [values, setValues] = useState<NodeFormValues>({
+    type: "process",
+    ...initialValues,
+  });
+
+  const handleChange = useCallback(
+    (field: keyof NodeFormValues, value: unknown) => {
+      setValues((prev) => ({ ...prev, [field]: value }));
+    },
+    [],
+  );
+
+  const generateCode = useCallback((): string => {
+    switch (values.type) {
+      case "process":
+        return `${values.variableName} = ${values.value}`;
+      case "output":
+        return `"${values.outputText}" 보여주기`;
+      case "decision":
+        return `만약 ${values.condition}이면`;
+      case "loop":
+        return `반복 ${values.loopCount}번`;
+      default:
+        return "";
     }
-  }, [values, validate])
+  }, [values]);
 
-  return { values, errors, isSubmitting, handleChange, handleSubmit }
-}
+  const reset = useCallback(() => {
+    setValues({ type: "process", ...initialValues });
+  }, [initialValues]);
+
+  return { values, handleChange, generateCode, reset };
+};
 ```
 
-### 3. Modal State Hook
+### 4. Toggle/Boolean 훅
 
 ```typescript
-// Pattern: Multiple modal management
-type ModalType = 'edit' | 'delete' | 'duplicate' | null
-
-export const useModalState = () => {
-  const [activeModal, setActiveModal] = useState<ModalType>(null)
-  const [modalData, setModalData] = useState<any>(null)
-
-  const openModal = useCallback((type: ModalType, data?: any) => {
-    setActiveModal(type)
-    setModalData(data)
-  }, [])
-
-  const closeModal = useCallback(() => {
-    setActiveModal(null)
-    setModalData(null)
-  }, [])
-
-  return {
-    activeModal,
-    modalData,
-    openModal,
-    closeModal,
-    isOpen: useCallback((type: ModalType) => activeModal === type, [activeModal]),
-  }
-}
-```
-
-### 4. Toggle/Boolean Hook
-
-```typescript
-// Pattern: Boolean state with convenience methods
+// hooks/use-toggle.ts
 export const useToggle = (initialValue = false) => {
-  const [value, setValue] = useState(initialValue)
+  const [value, setValue] = useState(initialValue);
 
-  const toggle = useCallback(() => setValue(v => !v), [])
-  const setTrue = useCallback(() => setValue(true), [])
-  const setFalse = useCallback(() => setValue(false), [])
+  const toggle = useCallback(() => setValue((v) => !v), []);
+  const setTrue = useCallback(() => setValue(true), []);
+  const setFalse = useCallback(() => setValue(false), []);
 
-  return [value, { toggle, setTrue, setFalse, set: setValue }] as const
-}
-
-// Usage
-const [isExpanded, { toggle, setTrue: expand, setFalse: collapse }] = useToggle()
+  return [value, { toggle, setTrue, setFalse, set: setValue }] as const;
+};
 ```
 
 ## Testing Extracted Hooks
 
-After extraction, test hooks in isolation:
+추출 후 반드시 훅을 독립적으로 테스트:
 
 ```typescript
-// use-model-config.spec.ts
-import { renderHook, act } from '@testing-library/react'
-import { useModelConfig } from './use-model-config'
+// use-flow-sync.test.ts
+import { renderHook, act } from "@testing-library/react";
+import { useFlowSync } from "./use-flow-sync";
 
-describe('useModelConfig', () => {
-  it('should initialize with default values', () => {
-    const { result } = renderHook(() => useModelConfig({
-      hasFetchedDetail: false,
-    }))
+describe("useFlowSync", () => {
+  it("should generate nodes from code", () => {
+    const { result } = renderHook(() => useFlowSync({ code: "나이 = 20" }));
+    expect(result.current.nodes.length).toBeGreaterThan(0);
+    expect(result.current.lastEditSource).toBe("code");
+  });
 
-    expect(result.current.modelConfig.provider).toBe('langgenius/openai/openai')
-    expect(result.current.modelModeType).toBe(ModelModeType.unset)
-  })
-
-  it('should update model config', () => {
-    const { result } = renderHook(() => useModelConfig({
-      hasFetchedDetail: true,
-    }))
+  it("should track edit source when flowchart updates", () => {
+    const { result } = renderHook(() => useFlowSync({ code: "" }));
 
     act(() => {
-      result.current.setModelConfig({
-        ...result.current.modelConfig,
-        model_id: 'gpt-4',
-      })
-    })
+      result.current.updateFromFlowchart(mockNodes, mockEdges);
+    });
 
-    expect(result.current.modelConfig.model_id).toBe('gpt-4')
-  })
-})
+    expect(result.current.lastEditSource).toBe("flowchart");
+  });
+});
 ```

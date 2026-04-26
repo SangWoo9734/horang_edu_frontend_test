@@ -1,483 +1,143 @@
 ---
 name: component-refactoring
-description: Refactor high-complexity React components in Dify frontend. Use when `pnpm analyze-component --json` shows complexity > 50 or lineCount > 300, when the user asks for code splitting, hook extraction, or complexity reduction, or when `pnpm analyze-component` warns to refactor before testing; avoid for simple/well-structured components, third-party wrappers, or when the user explicitly wants testing without refactoring.
+description: Refactor high-complexity React components. Use when a component exceeds 200 lines, has more than 5 useState/useEffect hooks, or mixes business logic with UI rendering. Also use when the user asks for code splitting, hook extraction, or complexity reduction. Avoid for simple components under 100 lines or third-party library wrappers.
 ---
 
-# Dify Component Refactoring Skill
+# Component Refactoring
 
-Refactor high-complexity React components in the Dify frontend codebase with the patterns and workflow below.
+React 컴포넌트의 복잡도를 낮추고 관심사를 분리하는 리팩토링 가이드.
 
-> **Complexity Threshold**: Components with complexity > 50 (measured by `pnpm analyze-component`) should be refactored before testing.
+> 상세 패턴은 references/ 디렉토리의 문서를 참조합니다.
+
+## When to Refactor
+
+| 신호      | 기준                                             |
+| --------- | ------------------------------------------------ |
+| 라인 수   | 200줄 초과                                       |
+| Hook 수   | useState/useEffect 5개 이상                      |
+| 로직 혼재 | 비즈니스 로직과 UI 렌더링이 같은 컴포넌트에 존재 |
+| 중첩 깊이 | JSX 조건부 렌더링 3단계 이상                     |
+| Props 수  | 10개 이상                                        |
 
 ## Quick Reference
 
-### Commands (run from `web/`)
-
-Use paths relative to `web/` (e.g., `app/components/...`).
-Use `refactor-component` for refactoring prompts and `analyze-component` for testing prompts and metrics.
-
 ```bash
-cd web
+# 라인 수 확인
+wc -l src/components/**/*.tsx
 
-# Generate refactoring prompt
-pnpm refactor-component <path>
-
-# Output refactoring analysis as JSON
-pnpm refactor-component <path> --json
-
-# Generate testing prompt (after refactoring)
-pnpm analyze-component <path>
-
-# Output testing analysis as JSON
-pnpm analyze-component <path> --json
+# useState/useEffect 수 확인
+grep -c 'useState\|useEffect' src/components/**/*.tsx
 ```
 
-### Complexity Analysis
+## Core Patterns
 
-```bash
-# Analyze component complexity
-pnpm analyze-component <path> --json
+### Pattern 1: 커스텀 훅 추출
 
-# Key metrics to check:
-# - complexity: normalized score 0-100 (target < 50)
-# - maxComplexity: highest single function complexity
-# - lineCount: total lines (target < 300)
-```
+상태 로직과 비즈니스 로직을 UI에서 분리. 상세 패턴은 [hook-extraction.md](references/hook-extraction.md) 참조.
 
-### Complexity Score Interpretation
+**이 프로젝트에서 훅 추출이 필요한 곳:**
 
-| Score | Level | Action |
-|-------|-------|--------|
-| 0-25 | 🟢 Simple | Ready for testing |
-| 26-50 | 🟡 Medium | Consider minor refactoring |
-| 51-75 | 🟠 Complex | **Refactor before testing** |
-| 76-100 | 🔴 Very Complex | **Must refactor** |
+- `FlowCanvas.tsx` → `useFlowSync`, `useExecutionHighlight`
+- `CodeEditor.tsx` → `useEditorSync`, `useEditorValidation`
+- `ControlBar.tsx` → `useExecutionControl`
+- `NodeEditModal.tsx` → `useNodeForm`
 
-## Core Refactoring Patterns
+### Pattern 2: 서브컴포넌트 분리
 
-### Pattern 1: Extract Custom Hooks
+하나의 컴포넌트가 여러 UI 섹션을 가질 때 분리. 상세 전략은 [component-splitting.md](references/component-splitting.md) 참조.
 
-**When**: Component has complex state management, multiple `useState`/`useEffect`, or business logic mixed with UI.
+### Pattern 3: 조건부 렌더링 단순화
 
-**Dify Convention**: Place hooks in a `hooks/` subdirectory or alongside the component as `use-<feature>.ts`.
+중첩 조건, 삼항 체인, 복잡한 boolean 로직 정리. 상세 패턴은 [complexity-patterns.md](references/complexity-patterns.md) 참조.
+
+### Pattern 4: 이벤트 핸들러 추출
+
+인라인 핸들러가 복잡할 때 훅이나 함수로 추출.
 
 ```typescript
-// ❌ Before: Complex state logic in component
-const Configuration: FC = () => {
-  const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>(...)
-  const [completionParams, setCompletionParams] = useState<FormValue>({})
-  
-  // 50+ lines of state management logic...
-  
-  return <div>...</div>
-}
+// ❌ Before
+<button onClick={async () => {
+  const session = new YaksokSession({ ... })
+  session.addModule('main', code)
+  // 실행 로직 20줄...
+}}>실행</button>
 
-// ✅ After: Extract to custom hook
-// hooks/use-model-config.ts
-export const useModelConfig = (appId: string) => {
-  const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
-  const [completionParams, setCompletionParams] = useState<FormValue>({})
-  
-  // Related state management logic here
-  
-  return { modelConfig, setModelConfig, completionParams, setCompletionParams }
-}
-
-// Component becomes cleaner
-const Configuration: FC = () => {
-  const { modelConfig, setModelConfig } = useModelConfig(appId)
-  return <div>...</div>
-}
+// ✅ After
+const { handleRun } = useExecutionControl()
+<button onClick={handleRun}>실행</button>
 ```
 
-**Dify Examples**:
-- `web/app/components/app/configuration/hooks/use-advanced-prompt-config.ts`
-- `web/app/components/app/configuration/debug/hooks.tsx`
-- `web/app/components/workflow/hooks/use-workflow.ts`
+### Pattern 5: 노드 컴포넌트 구조화
 
-### Pattern 2: Extract Sub-Components
-
-**When**: Single component has multiple UI sections, conditional rendering blocks, or repeated patterns.
-
-**Dify Convention**: Place sub-components in subdirectories or as separate files in the same directory.
-
-```typescript
-// ❌ Before: Monolithic JSX with multiple sections
-const AppInfo = () => {
-  return (
-    <div>
-      {/* 100 lines of header UI */}
-      {/* 100 lines of operations UI */}
-      {/* 100 lines of modals */}
-    </div>
-  )
-}
-
-// ✅ After: Split into focused components
-// app-info/
-//   ├── index.tsx           (orchestration only)
-//   ├── app-header.tsx      (header UI)
-//   ├── app-operations.tsx  (operations UI)
-//   └── app-modals.tsx      (modal management)
-
-const AppInfo = () => {
-  const { showModal, setShowModal } = useAppInfoModals()
-  
-  return (
-    <div>
-      <AppHeader appDetail={appDetail} />
-      <AppOperations onAction={handleAction} />
-      <AppModals show={showModal} onClose={() => setShowModal(null)} />
-    </div>
-  )
-}
-```
-
-**Dify Examples**:
-- `web/app/components/app/configuration/` directory structure
-- `web/app/components/workflow/nodes/` per-node organization
-
-### Pattern 3: Simplify Conditional Logic
-
-**When**: Deep nesting (> 3 levels), complex ternaries, or multiple `if/else` chains.
-
-```typescript
-// ❌ Before: Deeply nested conditionals
-const Template = useMemo(() => {
-  if (appDetail?.mode === AppModeEnum.CHAT) {
-    switch (locale) {
-      case LanguagesSupported[1]:
-        return <TemplateChatZh />
-      case LanguagesSupported[7]:
-        return <TemplateChatJa />
-      default:
-        return <TemplateChatEn />
-    }
-  }
-  if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT) {
-    // Another 15 lines...
-  }
-  // More conditions...
-}, [appDetail, locale])
-
-// ✅ After: Use lookup tables + early returns
-const TEMPLATE_MAP = {
-  [AppModeEnum.CHAT]: {
-    [LanguagesSupported[1]]: TemplateChatZh,
-    [LanguagesSupported[7]]: TemplateChatJa,
-    default: TemplateChatEn,
-  },
-  [AppModeEnum.ADVANCED_CHAT]: {
-    [LanguagesSupported[1]]: TemplateAdvancedChatZh,
-    // ...
-  },
-}
-
-const Template = useMemo(() => {
-  const modeTemplates = TEMPLATE_MAP[appDetail?.mode]
-  if (!modeTemplates) return null
-  
-  const TemplateComponent = modeTemplates[locale] || modeTemplates.default
-  return <TemplateComponent appDetail={appDetail} />
-}, [appDetail, locale])
-```
-
-### Pattern 4: Extract API/Data Logic
-
-**When**: Component directly handles API calls, data transformation, or complex async operations.
-
-**Dify Convention**: Use `@tanstack/react-query` hooks from `web/service/use-*.ts` or create custom data hooks.
-
-```typescript
-// ❌ Before: API logic in component
-const MCPServiceCard = () => {
-  const [basicAppConfig, setBasicAppConfig] = useState({})
-  
-  useEffect(() => {
-    if (isBasicApp && appId) {
-      (async () => {
-        const res = await fetchAppDetail({ url: '/apps', id: appId })
-        setBasicAppConfig(res?.model_config || {})
-      })()
-    }
-  }, [appId, isBasicApp])
-  
-  // More API-related logic...
-}
-
-// ✅ After: Extract to data hook using React Query
-// use-app-config.ts
-import { useQuery } from '@tanstack/react-query'
-import { get } from '@/service/base'
-
-const NAME_SPACE = 'appConfig'
-
-export const useAppConfig = (appId: string, isBasicApp: boolean) => {
-  return useQuery({
-    enabled: isBasicApp && !!appId,
-    queryKey: [NAME_SPACE, 'detail', appId],
-    queryFn: () => get<AppDetailResponse>(`/apps/${appId}`),
-    select: data => data?.model_config || {},
-  })
-}
-
-// Component becomes cleaner
-const MCPServiceCard = () => {
-  const { data: config, isLoading } = useAppConfig(appId, isBasicApp)
-  // UI only
-}
-```
-
-**React Query Best Practices in Dify**:
-- Define `NAME_SPACE` for query key organization
-- Use `enabled` option for conditional fetching
-- Use `select` for data transformation
-- Export invalidation hooks: `useInvalidXxx`
-
-**Dify Examples**:
-- `web/service/use-workflow.ts`
-- `web/service/use-common.ts`
-- `web/service/knowledge/use-dataset.ts`
-- `web/service/knowledge/use-document.ts`
-
-### Pattern 5: Extract Modal/Dialog Management
-
-**When**: Component manages multiple modals with complex open/close states.
-
-**Dify Convention**: Modals should be extracted with their state management.
-
-```typescript
-// ❌ Before: Multiple modal states in component
-const AppInfo = () => {
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [showSwitchModal, setShowSwitchModal] = useState(false)
-  const [showImportDSLModal, setShowImportDSLModal] = useState(false)
-  // 5+ more modal states...
-}
-
-// ✅ After: Extract to modal management hook
-type ModalType = 'edit' | 'duplicate' | 'delete' | 'switch' | 'import' | null
-
-const useAppInfoModals = () => {
-  const [activeModal, setActiveModal] = useState<ModalType>(null)
-  
-  const openModal = useCallback((type: ModalType) => setActiveModal(type), [])
-  const closeModal = useCallback(() => setActiveModal(null), [])
-  
-  return {
-    activeModal,
-    openModal,
-    closeModal,
-    isOpen: (type: ModalType) => activeModal === type,
-  }
-}
-```
-
-### Pattern 6: Extract Form Logic
-
-**When**: Complex form validation, submission handling, or field transformation.
-
-**Dify Convention**: Use `@tanstack/react-form` patterns from `web/app/components/base/form/`.
-
-```typescript
-// ✅ Use existing form infrastructure
-import { useAppForm } from '@/app/components/base/form'
-
-const ConfigForm = () => {
-  const form = useAppForm({
-    defaultValues: { name: '', description: '' },
-    onSubmit: handleSubmit,
-  })
-  
-  return <form.Provider>...</form.Provider>
-}
-```
-
-## Dify-Specific Refactoring Guidelines
-
-### 1. Context Provider Extraction
-
-**When**: Component provides complex context values with multiple states.
-
-```typescript
-// ❌ Before: Large context value object
-const value = {
-  appId, isAPIKeySet, isTrailFinished, mode, modelModeType,
-  promptMode, isAdvancedMode, isAgent, isOpenAI, isFunctionCall,
-  // 50+ more properties...
-}
-return <ConfigContext.Provider value={value}>...</ConfigContext.Provider>
-
-// ✅ After: Split into domain-specific contexts
-<ModelConfigProvider value={modelConfigValue}>
-  <DatasetConfigProvider value={datasetConfigValue}>
-    <UIConfigProvider value={uiConfigValue}>
-      {children}
-    </UIConfigProvider>
-  </DatasetConfigProvider>
-</ModelConfigProvider>
-```
-
-**Dify Reference**: `web/context/` directory structure
-
-### 2. Workflow Node Components
-
-**When**: Refactoring workflow node components (`web/app/components/workflow/nodes/`).
-
-**Conventions**:
-- Keep node logic in `use-interactions.ts`
-- Extract panel UI to separate files
-- Use `_base` components for common patterns
+React Flow 커스텀 노드는 순수 UI에 집중하고, 데이터 변환/이벤트 로직은 상위에서 처리.
 
 ```
-nodes/<node-type>/
-  ├── index.tsx              # Node registration
-  ├── node.tsx               # Node visual component
-  ├── panel.tsx              # Configuration panel
-  ├── use-interactions.ts    # Node-specific hooks
-  └── types.ts               # Type definitions
+components/flowchart/nodes/
+├── ProcessNode.tsx          # UI만
+├── DecisionNode.tsx         # UI만
+├── LoopNode.tsx             # UI만
+├── OutputNode.tsx           # UI만
+├── TerminalNode.tsx         # UI만
+├── FunctionNode.tsx         # UI만
+├── node-styles.ts           # 공통 스타일/유틸
+└── node-types.ts            # 노드 타입 레지스트리
 ```
-
-### 3. Configuration Components
-
-**When**: Refactoring app configuration components.
-
-**Conventions**:
-- Separate config sections into subdirectories
-- Use existing patterns from `web/app/components/app/configuration/`
-- Keep feature toggles in dedicated components
-
-### 4. Tool/Plugin Components
-
-**When**: Refactoring tool-related components (`web/app/components/tools/`).
-
-**Conventions**:
-- Follow existing modal patterns
-- Use service hooks from `web/service/use-tools.ts`
-- Keep provider-specific logic isolated
 
 ## Refactoring Workflow
 
-### Step 1: Generate Refactoring Prompt
+### Step 1: 현재 상태 파악
+
+라인 수, hook 수, 중첩 깊이를 확인한다.
+
+### Step 2: 계획 수립
+
+| 감지된 패턴          | 리팩토링 액션                                                                   |
+| -------------------- | ------------------------------------------------------------------------------- |
+| useState 5개+        | 커스텀 훅 추출 ([hook-extraction.md](references/hook-extraction.md))            |
+| useEffect 3개+       | 커스텀 훅 추출                                                                  |
+| JSX 200줄+           | 서브컴포넌트 분리 ([component-splitting.md](references/component-splitting.md)) |
+| 조건부 렌더링 3단계+ | 복잡도 감소 ([complexity-patterns.md](references/complexity-patterns.md))       |
+| 인라인 핸들러 복잡   | 이벤트 핸들러 추출                                                              |
+
+### Step 3: 점진적 실행
+
+한 번에 하나씩 추출. 각 추출 후:
 
 ```bash
-pnpm refactor-component <path>
+pnpm run type-check
+pnpm test
+# 브라우저에서 기능 확인
 ```
 
-This command will:
-- Analyze component complexity and features
-- Identify specific refactoring actions needed
-- Generate a prompt for AI assistant (auto-copied to clipboard on macOS)
-- Provide detailed requirements based on detected patterns
+### Step 4: 검증
 
-### Step 2: Analyze Details
+리팩토링 후 목표:
 
-```bash
-pnpm analyze-component <path> --json
-```
+- 각 컴포넌트 200줄 이하
+- useState/useEffect는 컴포넌트당 2-3개 이하
+- 비즈니스 로직과 UI 렌더링 분리
+- 컴포넌트 이름만 보고 역할 파악 가능
 
-Identify:
-- Total complexity score
-- Max function complexity
-- Line count
-- Features detected (state, effects, API, etc.)
-
-### Step 3: Plan
-
-Create a refactoring plan based on detected features:
-
-| Detected Feature | Refactoring Action |
-|------------------|-------------------|
-| `hasState: true` + `hasEffects: true` | Extract custom hook |
-| `hasAPI: true` | Extract data/service hook |
-| `hasEvents: true` (many) | Extract event handlers |
-| `lineCount > 300` | Split into sub-components |
-| `maxComplexity > 50` | Simplify conditional logic |
-
-### Step 4: Execute Incrementally
-
-1. **Extract one piece at a time**
-2. **Run lint, type-check, and tests after each extraction**
-3. **Verify functionality before next step**
-
-```
-For each extraction:
-  ┌────────────────────────────────────────┐
-  │ 1. Extract code                        │
-  │ 2. Run: pnpm lint:fix                  │
-  │ 3. Run: pnpm type-check:tsgo           │
-  │ 4. Run: pnpm test                      │
-  │ 5. Test functionality manually         │
-  │ 6. PASS? → Next extraction             │
-  │    FAIL? → Fix before continuing       │
-  └────────────────────────────────────────┘
-```
-
-### Step 5: Verify
-
-After refactoring:
-
-```bash
-# Re-run refactor command to verify improvements
-pnpm refactor-component <path>
-
-# If complexity < 25 and lines < 200, you'll see:
-# ✅ COMPONENT IS WELL-STRUCTURED
-
-# For detailed metrics:
-pnpm analyze-component <path> --json
-
-# Target metrics:
-# - complexity < 50
-# - lineCount < 300
-# - maxComplexity < 30
-```
-
-## Common Mistakes to Avoid
+## Common Mistakes
 
 ### ❌ Over-Engineering
 
 ```typescript
-// ❌ Too many tiny hooks
-const useButtonText = () => useState('Click')
-const useButtonDisabled = () => useState(false)
-const useButtonLoading = () => useState(false)
+// ❌ 너무 잘게 쪼갬
+const useNodeColor = () => useState("#3B82F6");
 
-// ✅ Cohesive hook with related state
-const useButtonState = () => {
-  const [text, setText] = useState('Click')
-  const [disabled, setDisabled] = useState(false)
-  const [loading, setLoading] = useState(false)
-  return { text, setText, disabled, setDisabled, loading, setLoading }
-}
+// ✅ 관련 상태는 하나의 훅에
+const useNodeState = () => {
+  const [color, setColor] = useState("#3B82F6");
+  const [label, setLabel] = useState("");
+  return { color, setColor, label, setLabel };
+};
 ```
 
-### ❌ Breaking Existing Patterns
+### ❌ 단일 사용 코드의 섣부른 추상화
 
-- Follow existing directory structures
-- Maintain naming conventions
-- Preserve export patterns for compatibility
+한 곳에서만 쓰이는 로직을 굳이 훅으로 빼지 않는다. 복잡도가 높을 때만 추출.
 
-### ❌ Premature Abstraction
+### ❌ Props Drilling 유발
 
-- Only extract when there's clear complexity benefit
-- Don't create abstractions for single-use code
-- Keep refactored code in the same domain area
-
-## References
-
-### Dify Codebase Examples
-
-- **Hook extraction**: `web/app/components/app/configuration/hooks/`
-- **Component splitting**: `web/app/components/app/configuration/`
-- **Service hooks**: `web/service/use-*.ts`
-- **Workflow patterns**: `web/app/components/workflow/hooks/`
-- **Form patterns**: `web/app/components/base/form/`
-
-### Related Skills
-
-- `frontend-testing` - For testing refactored components
-- `web/testing/testing.md` - Testing specification
+서브컴포넌트 분리 시 Props가 3단계 이상 전달되면 Zustand 스토어 사용을 고려.

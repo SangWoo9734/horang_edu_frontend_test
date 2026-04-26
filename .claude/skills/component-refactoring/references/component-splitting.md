@@ -1,477 +1,243 @@
 # Component Splitting Patterns
 
-This document provides detailed guidance on splitting large components into smaller, focused components in Dify.
+대규모 컴포넌트를 더 작고 집중된 컴포넌트로 분리하는 가이드.
 
-## When to Split Components
+## When to Split
 
-Split a component when you identify:
+1. **Multiple UI sections** — 서로 결합도가 낮은 독립적인 시각 영역
+2. **Conditional rendering blocks** — 큰 `{condition && <JSX />}` 블록
+3. **Repeated patterns** — 반복되는 유사 UI 구조
+4. **200+ lines** — 컴포넌트가 관리 가능 크기를 초과
+5. **Modal clusters** — 하나의 컴포넌트에서 여러 모달 렌더링
 
-1. **Multiple UI sections** - Distinct visual areas with minimal coupling that can be composed independently
-1. **Conditional rendering blocks** - Large `{condition && <JSX />}` blocks
-1. **Repeated patterns** - Similar UI structures used multiple times
-1. **300+ lines** - Component exceeds manageable size
-1. **Modal clusters** - Multiple modals rendered in one component
+## Strategy 1: Section-Based Splitting
 
-## Splitting Strategies
-
-### Strategy 1: Section-Based Splitting
-
-Identify visual sections and extract each as a component.
+시각적 섹션별로 분리.
 
 ```typescript
-// ❌ Before: Monolithic component (500+ lines)
-const ConfigurationPage = () => {
+// ❌ Before: 모든 패널이 하나의 컴포넌트에
+const Layout: FC = () => {
   return (
     <div>
-      {/* Header Section - 50 lines */}
-      <div className="header">
-        <h1>{t('configuration.title')}</h1>
-        <div className="actions">
-          {isAdvancedMode && <Badge>Advanced</Badge>}
-          <ModelParameterModal ... />
-          <AppPublisher ... />
-        </div>
-      </div>
-      
-      {/* Config Section - 200 lines */}
-      <div className="config">
-        <Config />
-      </div>
-      
-      {/* Debug Section - 150 lines */}
-      <div className="debug">
-        <Debug ... />
-      </div>
-      
-      {/* Modals Section - 100 lines */}
-      {showSelectDataSet && <SelectDataSet ... />}
-      {showHistoryModal && <EditHistoryModal ... />}
-      {showUseGPT4Confirm && <Confirm ... />}
+      {/* 에디터 영역 100줄 */}
+      {/* 순서도 영역 100줄 */}
+      {/* 콘솔 영역 50줄 */}
+      {/* 변수 패널 50줄 */}
+      {/* 컨트롤 바 50줄 */}
     </div>
   )
 }
 
-// ✅ After: Split into focused components
-// configuration/
-//   ├── index.tsx              (orchestration)
-//   ├── configuration-header.tsx
-//   ├── configuration-content.tsx
-//   ├── configuration-debug.tsx
-//   └── configuration-modals.tsx
-
-// configuration-header.tsx
-interface ConfigurationHeaderProps {
-  isAdvancedMode: boolean
-  onPublish: () => void
-}
-
-const ConfigurationHeader: FC<ConfigurationHeaderProps> = ({
-  isAdvancedMode,
-  onPublish,
-}) => {
-  const { t } = useTranslation()
-  
+// ✅ After: 역할별 분리
+const Layout: FC = () => {
   return (
-    <div className="header">
-      <h1>{t('configuration.title')}</h1>
-      <div className="actions">
-        {isAdvancedMode && <Badge>Advanced</Badge>}
-        <ModelParameterModal ... />
-        <AppPublisher onPublish={onPublish} />
-      </div>
-    </div>
-  )
-}
-
-// index.tsx (orchestration only)
-const ConfigurationPage = () => {
-  const { modelConfig, setModelConfig } = useModelConfig()
-  const { activeModal, openModal, closeModal } = useModalState()
-  
-  return (
-    <div>
-      <ConfigurationHeader
-        isAdvancedMode={isAdvancedMode}
-        onPublish={handlePublish}
-      />
-      <ConfigurationContent
-        modelConfig={modelConfig}
-        onConfigChange={setModelConfig}
-      />
-      {!isMobile && (
-        <ConfigurationDebug
-          inputs={inputs}
-          onSetting={handleSetting}
-        />
-      )}
-      <ConfigurationModals
-        activeModal={activeModal}
-        onClose={closeModal}
-      />
-    </div>
+    <PanelGroup direction="horizontal">
+      <EditorPanel />
+      <FlowchartPanel />
+      <PanelGroup direction="vertical">
+        <ConsolePanel />
+        <VariablePanel />
+      </PanelGroup>
+      <ControlBar />
+    </PanelGroup>
   )
 }
 ```
 
-### Strategy 2: Conditional Block Extraction
+## Strategy 2: Conditional Block Extraction
 
-Extract large conditional rendering blocks.
+조건부 렌더링 블록을 별도 컴포넌트로 추출.
 
 ```typescript
-// ❌ Before: Large conditional blocks
-const AppInfo = () => {
+// ❌ Before
+const ControlBar: FC = () => {
   return (
     <div>
-      {expand ? (
-        <div className="expanded">
-          {/* 100 lines of expanded view */}
+      {isRunning ? (
+        <div>
+          {/* 실행 중 UI 50줄 */}
         </div>
       ) : (
-        <div className="collapsed">
-          {/* 50 lines of collapsed view */}
+        <div>
+          {/* 대기 중 UI 50줄 */}
         </div>
       )}
     </div>
   )
 }
 
-// ✅ After: Separate view components
-const AppInfoExpanded: FC<AppInfoViewProps> = ({ appDetail, onAction }) => {
-  return (
-    <div className="expanded">
-      {/* Clean, focused expanded view */}
-    </div>
-  )
-}
+// ✅ After
+const RunningControls: FC<ControlProps> = ({ onPause, onStop }) => (
+  <div>
+    <button onClick={onPause}>⏸ 일시정지</button>
+    <button onClick={onStop}>⏹ 정지</button>
+  </div>
+)
 
-const AppInfoCollapsed: FC<AppInfoViewProps> = ({ appDetail, onAction }) => {
-  return (
-    <div className="collapsed">
-      {/* Clean, focused collapsed view */}
-    </div>
-  )
-}
+const IdleControls: FC<ControlProps> = ({ onRun }) => (
+  <div>
+    <button onClick={onRun}>▶ 실행</button>
+  </div>
+)
 
-const AppInfo = () => {
+const ControlBar: FC = () => {
   return (
     <div>
-      {expand
-        ? <AppInfoExpanded appDetail={appDetail} onAction={handleAction} />
-        : <AppInfoCollapsed appDetail={appDetail} onAction={handleAction} />
+      {isRunning
+        ? <RunningControls onPause={handlePause} onStop={handleStop} />
+        : <IdleControls onRun={handleRun} />
       }
     </div>
   )
 }
 ```
 
-### Strategy 3: Modal Extraction
+## Strategy 3: Modal Extraction
 
-Extract modals with their trigger logic.
+모달을 상태 관리와 함께 추출.
 
 ```typescript
-// ❌ Before: Multiple modals in one component
-const AppInfo = () => {
-  const [showEdit, setShowEdit] = useState(false)
-  const [showDuplicate, setShowDuplicate] = useState(false)
-  const [showDelete, setShowDelete] = useState(false)
-  const [showSwitch, setShowSwitch] = useState(false)
-  
-  const onEdit = async (data) => { /* 20 lines */ }
-  const onDuplicate = async (data) => { /* 20 lines */ }
-  const onDelete = async () => { /* 15 lines */ }
-  
-  return (
-    <div>
-      {/* Main content */}
-      
-      {showEdit && <EditModal onConfirm={onEdit} onClose={() => setShowEdit(false)} />}
-      {showDuplicate && <DuplicateModal onConfirm={onDuplicate} onClose={() => setShowDuplicate(false)} />}
-      {showDelete && <DeleteConfirm onConfirm={onDelete} onClose={() => setShowDelete(false)} />}
-      {showSwitch && <SwitchModal ... />}
-    </div>
-  )
-}
+// ❌ Before: 여러 모달 상태가 컴포넌트에 혼재
+const FlowCanvas: FC = () => {
+  const [showNodeEdit, setShowNodeEdit] = useState(false);
+  const [showNodeDelete, setShowNodeDelete] = useState(false);
+  const [editingNode, setEditingNode] = useState<FlowNode | null>(null);
+  // ...
+};
 
-// ✅ After: Modal manager component
-// app-info-modals.tsx
-type ModalType = 'edit' | 'duplicate' | 'delete' | 'switch' | null
+// ✅ After: 모달 매니저로 추출
+type ModalType = "edit" | "delete" | null;
 
-interface AppInfoModalsProps {
-  appDetail: AppDetail
-  activeModal: ModalType
-  onClose: () => void
-  onSuccess: () => void
-}
+const useNodeModals = () => {
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [targetNode, setTargetNode] = useState<FlowNode | null>(null);
 
-const AppInfoModals: FC<AppInfoModalsProps> = ({
-  appDetail,
-  activeModal,
-  onClose,
-  onSuccess,
-}) => {
-  const handleEdit = async (data) => { /* logic */ }
-  const handleDuplicate = async (data) => { /* logic */ }
-  const handleDelete = async () => { /* logic */ }
+  const openModal = useCallback((type: ModalType, node: FlowNode) => {
+    setActiveModal(type);
+    setTargetNode(node);
+  }, []);
 
-  return (
-    <>
-      {activeModal === 'edit' && (
-        <EditModal
-          appDetail={appDetail}
-          onConfirm={handleEdit}
-          onClose={onClose}
-        />
-      )}
-      {activeModal === 'duplicate' && (
-        <DuplicateModal
-          appDetail={appDetail}
-          onConfirm={handleDuplicate}
-          onClose={onClose}
-        />
-      )}
-      {activeModal === 'delete' && (
-        <DeleteConfirm
-          onConfirm={handleDelete}
-          onClose={onClose}
-        />
-      )}
-      {activeModal === 'switch' && (
-        <SwitchModal
-          appDetail={appDetail}
-          onClose={onClose}
-        />
-      )}
-    </>
-  )
-}
+  const closeModal = useCallback(() => {
+    setActiveModal(null);
+    setTargetNode(null);
+  }, []);
 
-// Parent component
-const AppInfo = () => {
-  const { activeModal, openModal, closeModal } = useModalState()
-  
-  return (
-    <div>
-      {/* Main content with openModal triggers */}
-      <Button onClick={() => openModal('edit')}>Edit</Button>
-      
-      <AppInfoModals
-        appDetail={appDetail}
-        activeModal={activeModal}
-        onClose={closeModal}
-        onSuccess={handleSuccess}
-      />
-    </div>
-  )
-}
+  return { activeModal, targetNode, openModal, closeModal };
+};
 ```
 
-### Strategy 4: List Item Extraction
+## Strategy 4: List Item Extraction
 
-Extract repeated item rendering.
+반복 렌더링 아이템을 별도 컴포넌트로 추출.
 
 ```typescript
-// ❌ Before: Inline item rendering
-const OperationsList = () => {
+// ❌ Before: 인라인 리스트 렌더링
+const ExampleSelector: FC = () => {
   return (
     <div>
-      {operations.map(op => (
-        <div key={op.id} className="operation-item">
-          <span className="icon">{op.icon}</span>
-          <span className="title">{op.title}</span>
-          <span className="description">{op.description}</span>
-          <button onClick={() => op.onClick()}>
-            {op.actionLabel}
-          </button>
-          {op.badge && <Badge>{op.badge}</Badge>}
-          {/* More complex rendering... */}
+      {examples.map(ex => (
+        <div key={ex.id} className="example-item">
+          <span>{ex.title}</span>
+          <p>{ex.description}</p>
+          <code>{ex.code.slice(0, 50)}...</code>
+          <button onClick={() => loadExample(ex)}>불러오기</button>
         </div>
       ))}
     </div>
   )
 }
 
-// ✅ After: Extracted item component
-interface OperationItemProps {
-  operation: Operation
-  onAction: (id: string) => void
-}
+// ✅ After: 아이템 컴포넌트 추출
+const ExampleItem: FC<{ example: Example; onLoad: (ex: Example) => void }> = ({
+  example,
+  onLoad,
+}) => (
+  <div className="example-item">
+    <span>{example.title}</span>
+    <p>{example.description}</p>
+    <code>{example.code.slice(0, 50)}...</code>
+    <button onClick={() => onLoad(example)}>불러오기</button>
+  </div>
+)
 
-const OperationItem: FC<OperationItemProps> = ({ operation, onAction }) => {
-  return (
-    <div className="operation-item">
-      <span className="icon">{operation.icon}</span>
-      <span className="title">{operation.title}</span>
-      <span className="description">{operation.description}</span>
-      <button onClick={() => onAction(operation.id)}>
-        {operation.actionLabel}
-      </button>
-      {operation.badge && <Badge>{operation.badge}</Badge>}
-    </div>
-  )
-}
-
-const OperationsList = () => {
-  const handleAction = useCallback((id: string) => {
-    const op = operations.find(o => o.id === id)
-    op?.onClick()
-  }, [operations])
-
+const ExampleSelector: FC = () => {
   return (
     <div>
-      {operations.map(op => (
-        <OperationItem
-          key={op.id}
-          operation={op}
-          onAction={handleAction}
-        />
+      {examples.map(ex => (
+        <ExampleItem key={ex.id} example={ex} onLoad={loadExample} />
       ))}
     </div>
   )
 }
 ```
 
-## Directory Structure Patterns
+## Directory Structure
 
-### Pattern A: Flat Structure (Simple Components)
-
-For components with 2-3 sub-components:
+### 이 프로젝트의 컴포넌트 구조
 
 ```
-component-name/
-  ├── index.tsx           # Main component
-  ├── sub-component-a.tsx
-  ├── sub-component-b.tsx
-  └── types.ts            # Shared types
-```
-
-### Pattern B: Nested Structure (Complex Components)
-
-For components with many sub-components:
-
-```
-component-name/
-  ├── index.tsx           # Main orchestration
-  ├── types.ts            # Shared types
-  ├── hooks/
-  │   ├── use-feature-a.ts
-  │   └── use-feature-b.ts
-  ├── components/
-  │   ├── header/
-  │   │   └── index.tsx
-  │   ├── content/
-  │   │   └── index.tsx
-  │   └── modals/
-  │       └── index.tsx
-  └── utils/
-      └── helpers.ts
-```
-
-### Pattern C: Feature-Based Structure (Dify Standard)
-
-Following Dify's existing patterns:
-
-```
-configuration/
-  ├── index.tsx           # Main page component
-  ├── base/               # Base/shared components
-  │   ├── feature-panel/
-  │   ├── group-name/
-  │   └── operation-btn/
-  ├── config/             # Config section
-  │   ├── index.tsx
-  │   ├── agent/
-  │   └── automatic/
-  ├── dataset-config/     # Dataset section
-  │   ├── index.tsx
-  │   ├── card-item/
-  │   └── params-config/
-  ├── debug/              # Debug section
-  │   ├── index.tsx
-  │   └── hooks.tsx
-  └── hooks/              # Shared hooks
-      └── use-advanced-prompt-config.ts
+components/
+├── editor/
+│   └── CodeEditor.tsx
+├── flowchart/
+│   ├── FlowCanvas.tsx
+│   ├── NodePalette.tsx
+│   ├── NodeEditModal.tsx
+│   ├── nodes/               # 커스텀 노드 (각각 순수 UI)
+│   │   ├── ProcessNode.tsx
+│   │   ├── DecisionNode.tsx
+│   │   ├── LoopNode.tsx
+│   │   ├── OutputNode.tsx
+│   │   ├── TerminalNode.tsx
+│   │   ├── FunctionNode.tsx
+│   │   ├── node-styles.ts
+│   │   └── node-types.ts
+│   └── edges/
+│       └── AnimatedEdge.tsx
+├── panels/
+│   ├── ConsolePanel.tsx
+│   ├── VariablePanel.tsx
+│   └── ControlBar.tsx
+└── ui/                       # 공통 UI
 ```
 
 ## Props Design
 
 ### Minimal Props Principle
 
-Pass only what's needed:
+필요한 것만 전달:
 
 ```typescript
-// ❌ Bad: Passing entire objects when only some fields needed
-<ConfigHeader appDetail={appDetail} modelConfig={modelConfig} />
+// ❌ 전체 객체 전달
+<NodeDisplay node={flowNode} />
 
-// ✅ Good: Destructure to minimum required
-<ConfigHeader
-  appName={appDetail.name}
-  isAdvancedMode={modelConfig.isAdvanced}
-  onPublish={handlePublish}
+// ✅ 필요한 필드만
+<NodeDisplay
+  label={flowNode.data.label}
+  type={flowNode.type}
+  highlighted={flowNode.data.highlighted}
 />
 ```
 
-### Callback Props Pattern
+### Props Drilling 방지
 
-Use callbacks for child-to-parent communication:
-
-```typescript
-// Parent
-const Parent = () => {
-  const [value, setValue] = useState('')
-  
-  return (
-    <Child
-      value={value}
-      onChange={setValue}
-      onSubmit={handleSubmit}
-    />
-  )
-}
-
-// Child
-interface ChildProps {
-  value: string
-  onChange: (value: string) => void
-  onSubmit: () => void
-}
-
-const Child: FC<ChildProps> = ({ value, onChange, onSubmit }) => {
-  return (
-    <div>
-      <input value={value} onChange={e => onChange(e.target.value)} />
-      <button onClick={onSubmit}>Submit</button>
-    </div>
-  )
-}
-```
-
-### Render Props for Flexibility
-
-When sub-components need parent context:
+3단계 이상 전달이 필요하면 Zustand 스토어 사용:
 
 ```typescript
-interface ListProps<T> {
-  items: T[]
-  renderItem: (item: T, index: number) => React.ReactNode
-  renderEmpty?: () => React.ReactNode
-}
+// ❌ Props drilling
+<Layout>
+  <FlowPanel executionState={...}>
+    <FlowCanvas executionState={...}>
+      <NodeComponent highlighted={executionState.currentNode === id} />
 
-function List<T>({ items, renderItem, renderEmpty }: ListProps<T>) {
-  if (items.length === 0 && renderEmpty) {
-    return <>{renderEmpty()}</>
-  }
-  
-  return (
-    <div>
-      {items.map((item, index) => renderItem(item, index))}
-    </div>
-  )
-}
+// ✅ Zustand 스토어
+const useExecutionStore = create((set) => ({
+  currentNodeId: null,
+  setCurrentNodeId: (id) => set({ currentNodeId: id }),
+}))
 
-// Usage
-<List
-  items={operations}
-  renderItem={(op, i) => <OperationItem key={i} operation={op} />}
-  renderEmpty={() => <EmptyState message="No operations" />}
-/>
+// NodeComponent에서 직접 구독
+const NodeComponent = ({ id }) => {
+  const isHighlighted = useExecutionStore(s => s.currentNodeId === id)
+}
 ```
