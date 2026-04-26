@@ -170,9 +170,24 @@ export function flowToCode(nodes: FlowNode[], edges: FlowEdge[]): string {
   if (nodes.length === 0) return ''
 
   const { nodeMap, outgoing, incoming } = buildMaps(nodes, edges)
-  const startNode = nodes.find((n) => n.data.nodeType === 'terminal' && n.data.label === '시작')
-  if (!startNode) return ''
 
-  const lines = generateBlock(startNode.id, outgoing, incoming, nodeMap, 0, new Set(), new Set())
-  return lines.join('\n')
+  // 1) AST→Flow가 만든 "시작" terminal 우선
+  // 2) 없으면 incoming 비-back 엣지가 없는 노드를 루트로 사용 (팔레트로 직접 만든 순서도)
+  let startId: string | undefined = nodes.find(
+    (n) => n.data.nodeType === 'terminal' && n.data.label === '시작',
+  )?.id
+
+  if (!startId) {
+    startId = nodes.find((n) => {
+      const inEdges = (incoming.get(n.id) ?? []).filter(
+        (e) => (e.data as EdgeData)?.edgeType !== 'back',
+      )
+      return inEdges.length === 0
+    })?.id
+  }
+
+  if (!startId) return ''
+
+  const lines = generateBlock(startId, outgoing, incoming, nodeMap, 0, new Set(), new Set())
+  return lines.filter((l) => l !== undefined).join('\n').trimEnd()
 }
