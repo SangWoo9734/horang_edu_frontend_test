@@ -3,16 +3,14 @@ import { css } from 'styled-system/css'
 import Layout from './app/layout'
 import { useExecutionStore } from './stores/execution-store'
 import { useEditorStore } from './stores/editor-store'
-import { useUiStore } from './stores/ui-store'
+
 import CodeEditor from './components/editor/CodeEditor'
 import FlowCanvas from './components/flowchart/FlowCanvas'
 import ConsolePanel from './components/panels/ConsolePanel'
 import VariablePanel from './components/panels/VariablePanel'
-import Sidebar from './components/Sidebar'
 import Mascot from './components/Mascot'
 import { startExecution, stopExecution, pauseExecution, resumeExecution } from './lib/yaksok/runner'
 import { editorInstanceRef } from './components/editor/editor-ref'
-import type { LessonItem } from './data/lessons'
 
 // ── 달빛약속 3원 로고 ──────────────────────────
 function Logo() {
@@ -217,10 +215,7 @@ function SmallBtn({ onClick, children }: { onClick: () => void; children: React.
 // ── App ─────────────────────────────────────
 export default function App() {
   const [activeNav, setActiveNav] = useState('학습하기')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activeLesson, setActiveLesson] = useState<LessonItem | null>(null)
   const setCode = useEditorStore((s) => s.setCode)
-  const setLastEditSource = useUiStore((s) => s.setLastEditSource)
   const status = useExecutionStore((s) => s.status)
   const executingLine = useEditorStore((s) => s.executingLine)
   const code = useEditorStore((s) => s.code)
@@ -229,31 +224,15 @@ export default function App() {
     ? code.split('\n')[executingLine - 1]?.trim()
     : undefined
 
-  const handleSelectLesson = (item: LessonItem) => {
-    setActiveLesson(item)
-    setLastEditSource('code')
-    setCode(item.code)
-    editorInstanceRef.current?.setValue(item.code)
-  }
-
   return (
     <Layout
       topNav={<TopNav activeNav={activeNav} onNavChange={setActiveNav}/>}
-      sidebar={
-        <Sidebar
-          activeId={activeLesson?.id ?? ''}
-          onSelect={handleSelectLesson}
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((v) => !v)}
-        />
-      }
       mascot={<Mascot status={status} currentLine={currentLineText}/>}
       editor={
         <>
           <CardHeader
             dotColor="#4F46E5"
             title="코드 작성"
-            meta={activeLesson?.label}
             actions={<SmallBtn onClick={() => { setCode(''); editorInstanceRef.current?.setValue('') }}>초기화</SmallBtn>}
           />
           <CodeEditor/>

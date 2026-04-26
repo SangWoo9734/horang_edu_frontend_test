@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 
 interface LayoutProps {
   topNav: ReactNode
-  sidebar: ReactNode
   mascot: ReactNode
   editor: ReactNode
   flowchart: ReactNode
@@ -11,7 +10,7 @@ interface LayoutProps {
   variables: ReactNode
 }
 
-export default function Layout({ topNav, sidebar, mascot, editor, flowchart, console: consolePanel, variables }: LayoutProps) {
+export default function Layout({ topNav, mascot, editor, flowchart, console: consolePanel, variables }: LayoutProps) {
   return (
     <div className={css({
       display: 'flex',
@@ -30,9 +29,6 @@ export default function Layout({ topNav, sidebar, mascot, editor, flowchart, con
 
       {/* 바디 */}
       <div className={css({ display: 'flex', flex: 1, overflow: 'hidden' })}>
-        {/* 사이드바 */}
-        {sidebar}
-
         {/* 메인 */}
         <div className={css({
           flex: 1,
