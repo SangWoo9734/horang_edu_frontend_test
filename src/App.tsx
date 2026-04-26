@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { css } from 'styled-system/css'
 import Layout from './app/layout'
 import { useExecutionStore } from './stores/execution-store'
 import { useEditorStore } from './stores/editor-store'
+import { useUiStore } from './stores/ui-store'
 
 import CodeEditor from './components/editor/CodeEditor'
 import FlowCanvas from './components/flowchart/FlowCanvas'
@@ -52,18 +53,58 @@ function StatusChip() {
   )
 }
 
+// ── 동기화 방향 배지 ─────────────────────────
+function SyncBadge() {
+  const lastEditSource = useUiStore((s) => s.lastEditSource)
+  const [visible, setVisible] = useState(false)
+  const [dir, setDir] = useState<'c2f' | 'f2c'>('c2f')
+  const prevRef = useRef(lastEditSource)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (lastEditSource === prevRef.current || lastEditSource === 'none') return
+    prevRef.current = lastEditSource
+    setDir(lastEditSource === 'code' ? 'c2f' : 'f2c')
+    setVisible(true)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setVisible(false), 1500)
+  }, [lastEditSource])
+
+  return (
+    <div style={{
+      position: 'absolute',
+      left: '50%', top: '50%',
+      transform: 'translate(-50%, -50%)',
+      zIndex: 10, pointerEvents: 'none',
+      opacity: visible ? 1 : 0,
+      transition: 'opacity 0.25s ease',
+    }}>
+      <div style={{
+        background: '#4F46E5',
+        color: '#fff',
+        fontSize: 11, fontWeight: 700,
+        padding: '6px 14px',
+        borderRadius: 99,
+        whiteSpace: 'nowrap',
+        boxShadow: '0 4px 16px rgba(79,70,229,0.35)',
+        display: 'flex', alignItems: 'center', gap: 6,
+        letterSpacing: 0.2,
+      }}>
+        {dir === 'c2f' ? '코드 → 순서도' : '순서도 → 코드'}
+      </div>
+    </div>
+  )
+}
+
 // ── 탑 네비 ─────────────────────────────────
-function TopNav({ activeNav, onNavChange, onHelp }: { activeNav: string; onNavChange: (v: string) => void; onHelp: () => void }) {
+function TopNav({ onHelp }: { onHelp: () => void }) {
   const status = useExecutionStore((s) => s.status)
   const { executionDelay, setExecutionDelay } = useExecutionStore()
   const isRunning = status === 'running'
   const isPaused = status === 'paused'
   const isIdle = status === 'idle' || status === 'done' || status === 'error'
 
-  // thumb 위치 = executionDelay / 2000 * 100%
   const speedPct = ((executionDelay / 2000) * 100).toFixed(0)
-
-  const navItems = ['학습하기', '순서도 실습']
 
   return (
     <nav style={{
@@ -77,26 +118,6 @@ function TopNav({ activeNav, onNavChange, onHelp }: { activeNav: string; onNavCh
         <Logo/>
         <span style={{ fontWeight: 700, fontSize: 15, color: '#1A1A2E', letterSpacing: -0.3 }}>달빛약속</span>
       </a>
-
-      {/* 탭 */}
-      <div style={{ display: 'flex', alignItems: 'stretch', height: '100%' }}>
-        {navItems.map((label) => (
-          <div
-            key={label}
-            onClick={() => onNavChange(label)}
-            style={{
-              display: 'flex', alignItems: 'center', padding: '0 16px',
-              fontSize: 13, fontWeight: activeNav === label ? 600 : 500,
-              color: activeNav === label ? '#4F46E5' : '#8B8B9E',
-              borderBottom: `2px solid ${activeNav === label ? '#4F46E5' : 'transparent'}`,
-              cursor: 'pointer', position: 'relative', top: 1,
-              transition: 'all .15s',
-            }}
-          >
-            {label}
-          </div>
-        ))}
-      </div>
 
       {/* 오른쪽 컨트롤 */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -226,7 +247,6 @@ function SmallBtn({ onClick, children }: { onClick: () => void; children: React.
 
 // ── App ─────────────────────────────────────
 export default function App() {
-  const [activeNav, setActiveNav] = useState('학습하기')
   const [helpOpen, setHelpOpen] = useState(false)
   const setCode = useEditorStore((s) => s.setCode)
   const status = useExecutionStore((s) => s.status)
@@ -240,7 +260,8 @@ export default function App() {
   return (
     <>
     <Layout
-      topNav={<TopNav activeNav={activeNav} onNavChange={setActiveNav} onHelp={() => setHelpOpen(true)}/>}
+      topNav={<TopNav onHelp={() => setHelpOpen(true)}/>}
+      syncBadge={<SyncBadge/>}
       mascot={<Mascot status={status} currentLine={currentLineText}/>}
       editor={
         <>

@@ -8,9 +8,10 @@ interface LayoutProps {
   flowchart: ReactNode
   console: ReactNode
   variables: ReactNode
+  syncBadge?: ReactNode
 }
 
-export default function Layout({ topNav, mascot, editor, flowchart, console: consolePanel, variables }: LayoutProps) {
+export default function Layout({ topNav, mascot, editor, flowchart, console: consolePanel, variables, syncBadge }: LayoutProps) {
   return (
     <div className={css({
       display: 'flex',
@@ -49,6 +50,7 @@ export default function Layout({ topNav, mascot, editor, flowchart, console: con
             gap: '2',
             overflow: 'hidden',
             minHeight: 0,
+            position: 'relative',
           })}>
             <div className={css({
               flex: 1, minWidth: 0,
@@ -63,6 +65,7 @@ export default function Layout({ topNav, mascot, editor, flowchart, console: con
             })}>
               {editor}
             </div>
+            {syncBadge}
             <div className={css({
               flex: 1, minWidth: 0,
               bg: 'bgPanel',
