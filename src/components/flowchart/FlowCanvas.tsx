@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback } from 'react'
 import {
   ReactFlow,
   Background,
@@ -35,6 +35,7 @@ import { parseAndConvert } from '../../lib/flowchart/ast-to-flow'
 import { applyLayout } from '../../lib/flowchart/layout'
 import { flowToCode } from '../../lib/flowchart/flow-to-code'
 import { editorInstanceRef } from '../editor/editor-ref'
+import { SYNC_DEBOUNCE_MS } from '../../lib/flowchart/sync'
 import type { FlowNodeType } from '../../types/flowchart'
 
 const nodeTypes: NodeTypes = {
@@ -55,21 +56,24 @@ function FlowCanvasInner() {
   const code = useEditorStore((s) => s.code)
   const setCode = useEditorStore((s) => s.setCode)
   const { nodes, edges, executingNodeId, setNodes, setEdges } = useFlowchartStore()
-  const { openModal } = useUiStore()
+  const { openModal, setLastEditSource } = useUiStore()
 
-  // 코드 변경 시 정방향 변환 (Phase 6에서 debounce + lastEditSource 추가)
-  const isFlowchartEdit = useRef(false)
+  // 코드 변경 시 정방향 변환 (debounce 300ms, lastEditSource === 'code' 일 때만)
   useEffect(() => {
-    if (isFlowchartEdit.current) return
-    if (!code) { setNodes([]); setEdges([]); return }
+    const timer = setTimeout(() => {
+      const { lastEditSource } = useUiStore.getState()
+      if (lastEditSource === 'flowchart') return
 
-    const graph = parseAndConvert(code)
-    if (!graph) return
+      if (!code) { setNodes([]); setEdges([]); return }
+      const graph = parseAndConvert(code)
+      if (!graph) return
 
-    const { nodes: ln, edges: le } = applyLayout(graph.nodes, graph.edges)
-    setNodes(ln)
-    setEdges(le)
-    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
+      const { nodes: ln, edges: le } = applyLayout(graph.nodes, graph.edges)
+      setNodes(ln)
+      setEdges(le)
+      setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
+    }, SYNC_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
   }, [code, setNodes, setEdges, fitView])
 
   // 실행 중인 노드 하이라이트
@@ -85,12 +89,10 @@ function FlowCanvasInner() {
   const triggerF2C = useCallback((nextNodes = nodes, nextEdges = edges) => {
     const generated = flowToCode(nextNodes, nextEdges)
     if (!generated) return
-    isFlowchartEdit.current = true
+    setLastEditSource('flowchart')  // onChange에서 lastEditSource 변경 차단
     setCode(generated)
     editorInstanceRef.current?.setValue(generated)
-    // 다음 tick에 플래그 해제 (useEffect 무시용)
-    setTimeout(() => { isFlowchartEdit.current = false }, 0)
-  }, [nodes, edges, setCode])
+  }, [nodes, edges, setCode, setLastEditSource])
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
