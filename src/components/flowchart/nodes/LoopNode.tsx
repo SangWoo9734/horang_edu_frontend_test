@@ -1,21 +1,28 @@
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import type { FlowNodeData, AppFlowNode } from '../../../types/flowchart'
+import { css } from 'styled-system/css'
 
 const col = '#10B981'
 const W = 180
 const H = 70
-const INDENT = 20  // 육각형 좌우 들여쓰기
-
-// 육각형 꼭짓점: 상단 좌우 + 우측 중간 + 하단 좌우 + 좌측 중간
+const INDENT = 20
 const POINTS = [
-  `${INDENT},4`,
-  `${W - INDENT},4`,
-  `${W - 4},${H / 2}`,
-  `${W - INDENT},${H - 4}`,
-  `${INDENT},${H - 4}`,
-  `4,${H / 2}`,
+  `${INDENT},4`, `${W - INDENT},4`, `${W - 4},${H / 2}`,
+  `${W - INDENT},${H - 4}`, `${INDENT},${H - 4}`, `4,${H / 2}`,
 ].join(' ')
+
+const textLayer = css({
+  position: 'absolute', inset: 0,
+  display: 'flex', flexDirection: 'column',
+  alignItems: 'center', justifyContent: 'center',
+  pointerEvents: 'none',
+})
+const badge = css({ fontSize: '8px', fontWeight: '700', opacity: 0.65 })
+const label = css({
+  fontSize: '11.5px', fontFamily: 'code', fontWeight: '600',
+  textAlign: 'center', wordBreak: 'break-all', lineHeight: '1.3',
+})
 
 export default function LoopNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
@@ -30,30 +37,15 @@ export default function LoopNode({ data, isConnectable }: NodeProps<AppFlowNode>
       <svg width={W} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
         <polygon
           points={POINTS}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth={strokeW}
-          strokeDasharray={dash}
+          fill={fill} stroke={stroke} strokeWidth={strokeW} strokeDasharray={dash}
           filter={d.executing ? `drop-shadow(0 0 8px ${col}60)` : `drop-shadow(0 2px 6px ${col}20)`}
         />
       </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        pointerEvents: 'none',
-        padding: `0 ${INDENT + 8}px`,
-      }}>
-        <span style={{ fontSize: 8, color: d.disconnected ? '#F97316' : col, fontWeight: 700, opacity: 0.65 }}>
+      <div className={textLayer} style={{ padding: `0 ${INDENT + 8}px` }}>
+        <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
           {d.disconnected ? '⚠️ 연결 끊김' : '반복'}
         </span>
-        <span style={{
-          fontSize: 11.5, fontFamily: "'JetBrains Mono', monospace",
-          fontWeight: 600, color: d.executing ? col : '#1A1A2E',
-          textAlign: 'center', wordBreak: 'break-all', lineHeight: 1.3,
-        }}>
-          {d.label}
-        </span>
+        <span className={label} style={{ color: d.executing ? col : '#1A1A2E' }}>{d.label}</span>
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable}/>
       <Handle type="source" position={Position.Left} id="back" isConnectable={isConnectable}/>

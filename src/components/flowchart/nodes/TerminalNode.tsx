@@ -1,17 +1,33 @@
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import type { FlowNodeData, AppFlowNode } from '../../../types/flowchart'
+import { css } from 'styled-system/css'
+
+const base = css({
+  paddingX: '5', paddingY: '2',
+  borderRadius: '20px',
+  fontSize: '12px', fontFamily: 'code', fontWeight: '700',
+  minWidth: '80px', textAlign: 'center', position: 'relative',
+})
+const badge = css({ fontSize: '8px', display: 'block', fontWeight: '700', opacity: 0.65, marginBottom: '0.5' })
 
 export default function TerminalNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
-  const stroke = d.label === '반환' ? '#F87171' : '#6366F1'
+  const col = d.label === '반환' ? '#F87171' : '#6366F1'
   const isEnd = d.label === '끝' || d.label === '반환'
-  const border = d.disconnected ? '1.5px dashed #F97316' : `${d.executing ? 2.5 : 1.5}px solid ${stroke}`
-  const bg = d.disconnected ? '#FFF7ED' : d.executing ? `${stroke}20` : '#fff'
   return (
-    <div style={{ padding: '8px 20px', borderRadius: 20, background: bg, color: d.executing ? stroke : '#1A1A2E', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, border, boxShadow: d.disconnected ? 'none' : d.executing ? `0 0 10px ${stroke}50` : `0 2px 8px ${stroke}20`, minWidth: 80, textAlign: 'center', opacity: d.disconnected ? 0.75 : 1 }}>
+    <div
+      className={base}
+      style={{
+        background: d.disconnected ? '#FFF7ED' : d.executing ? `${col}20` : '#fff',
+        color: d.executing ? col : '#1A1A2E',
+        border: d.disconnected ? '1.5px dashed #F97316' : `${d.executing ? 2.5 : 1.5}px solid ${col}`,
+        boxShadow: d.disconnected ? 'none' : d.executing ? `0 0 10px ${col}50` : `0 2px 8px ${col}20`,
+        opacity: d.disconnected ? 0.75 : 1,
+      }}
+    >
       {!isEnd && <Handle type="source" position={Position.Bottom} isConnectable={isConnectable}/>}
-      <span style={{ fontSize: 8, color: d.disconnected ? '#F97316' : stroke, display: 'block', fontWeight: 700, opacity: 0.65, marginBottom: 1 }}>
+      <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
         {d.disconnected ? '⚠️ 연결 끊김' : '단말'}
       </span>
       {d.label}
