@@ -64,6 +64,7 @@ export default function CodeEditor() {
       inherit: true,
       rules: [
         { token: 'keyword', foreground: '4F46E5', fontStyle: 'bold' },
+        { token: 'tag', foreground: '4F46E5', fontStyle: 'bold' },  // CALLABLE (FunctionInvoke)
         { token: 'string', foreground: '059669' },
         { token: 'number', foreground: 'DC2626' },
       ],
