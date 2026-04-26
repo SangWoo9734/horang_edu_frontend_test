@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react'
+import { css } from 'styled-system/css'
 import {
   ReactFlow,
   Background,
@@ -199,30 +200,30 @@ function FlowCanvasInner() {
   return (
     <>
       {/* 카드 헤더 */}
-      <div style={{
-        height: 40, display: 'flex', alignItems: 'center',
-        padding: '0 14px', gap: 8,
-        borderBottom: '1px solid #F3F2FA', flexShrink: 0,
-      }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', flexShrink: 0 }}/>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#4B4B6B' }}>순서도</span>
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#B0AECF' }}>
+      <div className={css({
+        height: '40px', display: 'flex', alignItems: 'center',
+        paddingX: '3.5', gap: '2',
+        borderBottom: '1px solid', borderColor: 'bgBase', flexShrink: 0,
+      })}>
+        <span className={css({ width: '7px', height: '7px', borderRadius: 'full', bg: 'nodeLoop', flexShrink: 0 })}/>
+        <span className={css({ fontSize: '12px', fontWeight: '700', color: 'textMid', fontFamily: 'ui' })}>순서도</span>
+        <span className={css({ marginLeft: 'auto', fontSize: '10px', color: 'accent', fontFamily: 'ui' })}>
           {nodes.filter(n => n.data.nodeType !== 'terminal').length}개 노드
         </span>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, position: 'relative' }}>
+      <div className={css({ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, position: 'relative' })}>
         <NodePalette />
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <div className={css({ flex: 1, position: 'relative', overflow: 'hidden' })}>
           {nodes.length === 0 && (
-            <div style={{
+            <div className={css({
               position: 'absolute', inset: 0, zIndex: 1,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              gap: 10, pointerEvents: 'none',
-            }}>
+              gap: '2.5', pointerEvents: 'none',
+            })}>
               <div style={{ fontSize: 44, animation: 'float 3s ease-in-out infinite' }}>🌙</div>
-              <p style={{ color: '#C4B5FD', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.7 }}>
+              <p className={css({ color: 'accent', fontSize: '12px', fontWeight: '600', textAlign: 'center', lineHeight: '1.7', fontFamily: 'ui' })}>
                 왼쪽에서 코드를 쓰면<br/>순서도가 짠! 하고 나와요
               </p>
             </div>

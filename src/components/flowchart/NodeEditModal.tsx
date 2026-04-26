@@ -1,4 +1,5 @@
 import { useState, useEffect, useReducer } from 'react'
+import { css } from 'styled-system/css'
 import { useUiStore } from '../../stores/ui-store'
 import { useFlowchartStore } from '../../stores/flowchart-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -62,37 +63,111 @@ function validatePositiveInt(v: string): string | null {
   return null
 }
 
+// ── 모달 스타일 ──────────────────────────────
+const M = {
+  overlay: css({
+    position: 'fixed', inset: 0,
+    background: 'token(colors.textPrimary)/12',
+    backdropFilter: 'blur(3px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 100,
+  }),
+  panel: css({
+    bg: 'white',
+    border: '1.5px solid', borderColor: 'accent',
+    borderRadius: '16px', padding: '6',
+    minWidth: '340px', maxWidth: '400px',
+    boxShadow: '0 16px 48px token(colors.primary)/12',
+  }),
+  panelTitle: css({
+    fontSize: '15px', fontWeight: '700',
+    color: 'textPrimary', marginBottom: '0.5', fontFamily: 'ui',
+  }),
+  fieldWrap: css({ display: 'flex', flexDirection: 'column', gap: '1', marginTop: '3' }),
+  fieldLabelRow: css({ display: 'flex', alignItems: 'baseline', gap: '1.5' }),
+  fieldLabel: css({ fontSize: '11px', fontWeight: '600', color: 'textMid', fontFamily: 'ui' }),
+  fieldLabelError: css({ fontSize: '11px', fontWeight: '600', color: '#EF4444', fontFamily: 'ui' }),
+  fieldHint: css({ fontSize: '10px', color: 'accent', fontFamily: 'ui' }),
+  input: css({
+    width: 'full', bg: 'bgSubtle',
+    border: '1.5px solid', borderColor: 'border',
+    color: 'textPrimary', borderRadius: '9px',
+    paddingX: '3', paddingY: '2',
+    fontFamily: 'code', fontSize: '12px', outline: 'none',
+    transition: 'border-color 0.15s',
+    _focus: { borderColor: 'primary' },
+  }),
+  inputError: css({
+    width: 'full', bg: '#FFF5F5',
+    border: '1.5px solid #FCA5A5',
+    color: 'textPrimary', borderRadius: '9px',
+    paddingX: '3', paddingY: '2',
+    fontFamily: 'code', fontSize: '12px', outline: 'none',
+    transition: 'border-color 0.15s',
+    _focus: { borderColor: '#EF4444' },
+  }),
+  fieldError: css({
+    display: 'flex', alignItems: 'center', gap: '1',
+    fontSize: '11px', color: '#EF4444', fontWeight: '500', fontFamily: 'ui',
+  }),
+  codePreview: css({
+    marginTop: '3.5', paddingX: '3', paddingY: '2',
+    bg: '#F8F7FF', borderRadius: '8px',
+    border: '1px solid', borderColor: 'accent',
+    fontFamily: 'code', fontSize: '11.5px', color: 'primary',
+    whiteSpace: 'pre',
+  }),
+  toggleRow: css({ display: 'flex', gap: '1.5', marginTop: '3' }),
+  toggleBtn: css({
+    flex: 1, paddingY: '1.5', borderRadius: '8px', cursor: 'pointer',
+    fontSize: '11px', fontWeight: '600', fontFamily: 'ui',
+    border: '1.5px solid', borderColor: 'border',
+    bg: 'bgSubtle', color: 'textMuted', transition: 'all 0.15s',
+  }),
+  toggleBtnActive: css({
+    flex: 1, paddingY: '1.5', borderRadius: '8px', cursor: 'pointer',
+    fontSize: '11px', fontWeight: '600', fontFamily: 'ui',
+    border: '1.5px solid', borderColor: 'primary',
+    bg: 'primaryLight', color: 'primary', transition: 'all 0.15s',
+  }),
+  footer: css({ display: 'flex', justifyContent: 'flex-end', gap: '2', marginTop: '5' }),
+  cancelBtn: css({
+    bg: 'bgBase', color: 'textSub',
+    paddingX: '4.5', paddingY: '1.5',
+    borderRadius: '99px', border: 'none',
+    fontSize: '13px', fontWeight: '500',
+    cursor: 'pointer', fontFamily: 'ui',
+  }),
+  submitBtn: css({
+    bg: 'primary', color: 'white',
+    paddingX: '4.5', paddingY: '1.5',
+    borderRadius: '99px', border: 'none',
+    fontSize: '13px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'ui',
+  }),
+}
+
 // ── 필드 컴포넌트 ────────────────────────────
 function Field({ label, value, onChange, placeholder, type = 'text', autoFocus, hint, error }: {
   label: string; value: string; onChange: (v: string) => void
   placeholder?: string; type?: string; autoFocus?: boolean; hint?: string; error?: string | null
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: error ? '#EF4444' : '#4B4B6B' }}>{label}</label>
-        {hint && !error && <span style={{ fontSize: 10, color: '#B0AECF' }}>{hint}</span>}
+    <div className={M.fieldWrap}>
+      <div className={M.fieldLabelRow}>
+        <label className={error ? M.fieldLabelError : M.fieldLabel}>{label}</label>
+        {hint && !error && <span className={M.fieldHint}>{hint}</span>}
       </div>
       <input
+        className={error ? M.inputError : M.input}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        style={{
-          width: '100%', background: error ? '#FFF5F5' : '#FAFAFE',
-          border: `1.5px solid ${error ? '#FCA5A5' : '#EEEDF8'}`,
-          color: '#1A1A2E', borderRadius: 9, padding: '8px 12px',
-          fontFamily: "'JetBrains Mono', monospace", fontSize: 12, outline: 'none',
-          transition: 'border-color .15s',
-        }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = error ? '#EF4444' : '#4F46E5' }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = error ? '#FCA5A5' : '#EEEDF8' }}
       />
       {error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#EF4444', fontWeight: 500 }}>
-          <span>⚠️</span>{error}
-        </div>
+        <div className={M.fieldError}><span>⚠️</span>{error}</div>
       )}
     </div>
   )
@@ -101,18 +176,7 @@ function Field({ label, value, onChange, placeholder, type = 'text', autoFocus, 
 // ── 코드 미리보기 ────────────────────────────
 function CodePreview({ code }: { code: string }) {
   if (!code.trim()) return null
-  return (
-    <div style={{
-      marginTop: 14, padding: '8px 12px',
-      background: '#F8F7FF', borderRadius: 8,
-      border: '1px solid #E0DEFF',
-      fontFamily: "'JetBrains Mono', monospace",
-      fontSize: 11.5, color: '#4F46E5',
-      whiteSpace: 'pre',
-    }}>
-      {code}
-    </div>
-  )
+  return <div className={M.codePreview}>{code}</div>
 }
 
 // ── 폼 상태 (useReducer) ─────────────────────
@@ -269,20 +333,11 @@ export default function NodeEditModal() {
   }
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: '#1A1A2E20', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-      onClick={handleCancel}
-    >
-      <div
-        style={{ background: '#fff', border: '1.5px solid #E0DEFF', borderRadius: 16, padding: 24, minWidth: 340, maxWidth: 400, boxShadow: '0 16px 48px #4F46E520' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E', marginBottom: 2 }}>
-          {getTitle(nodeType, loopVariant, processVariant)}
-        </div>
+    <div className={M.overlay} onClick={handleCancel}>
+      <div className={M.panel} onClick={(e) => e.stopPropagation()}>
+        <div className={M.panelTitle}>{getTitle(nodeType, loopVariant, processVariant)}</div>
 
         <form onSubmit={handleSubmit}>
-          {/* 변수 할당 */}
           {nodeType === 'process' && processVariant !== 'func-call' && (
             <>
               <Field label="변수 이름" value={varName} onChange={(v) => { setField('varName', v); setErrors(p => ({ ...p, varName: null })) }} placeholder="나이" autoFocus hint="예: 나이, 합계" error={errors.varName} />
@@ -290,7 +345,6 @@ export default function NodeEditModal() {
             </>
           )}
 
-          {/* 함수 호출 */}
           {nodeType === 'process' && processVariant === 'func-call' && (
             <>
               <Field label="함수 이름" value={funcCallName} onChange={(v) => { setField('funcCallName', v); setErrors(p => ({ ...p, funcCallName: null })) }} placeholder="인사하기" autoFocus error={errors.funcCallName} />
@@ -298,22 +352,14 @@ export default function NodeEditModal() {
             </>
           )}
 
-          {/* 출력 */}
           {nodeType === 'output' && (
             <>
-              <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+              <div className={M.toggleRow}>
                 {(['string', 'expr'] as const).map((t) => (
                   <button
                     key={t} type="button"
+                    className={outputType === t ? M.toggleBtnActive : M.toggleBtn}
                     onClick={() => setField('outputType', t)}
-                    style={{
-                      flex: 1, padding: '6px 0', borderRadius: 8, cursor: 'pointer',
-                      fontSize: 11, fontWeight: 600,
-                      border: `1.5px solid ${outputType === t ? '#4F46E5' : '#EEEDF8'}`,
-                      background: outputType === t ? '#EEF0FF' : '#FAFAFE',
-                      color: outputType === t ? '#4F46E5' : '#8B8B9E',
-                      transition: 'all .15s',
-                    }}
                   >
                     {t === 'string' ? '📝 문자열' : '📦 변수 / 식'}
                   </button>
@@ -331,22 +377,18 @@ export default function NodeEditModal() {
             </>
           )}
 
-          {/* 조건문 */}
           {nodeType === 'decision' && (
             <Field label="조건식" value={condition} onChange={(v) => { setField('condition', v); setErrors(p => ({ ...p, condition: null })) }} placeholder="나이 >= 14" autoFocus hint='비교 연산자 사용' error={errors.condition} />
           )}
 
-          {/* 횟수 반복 */}
           {nodeType === 'loop' && loopVariant === 'count' && (
             <Field label="반복 횟수" value={loopCount} onChange={(v) => { setField('loopCount', v); setErrors(p => ({ ...p, loopCount: null })) }} placeholder="5" type="number" autoFocus hint='정수 입력' error={errors.loopCount} />
           )}
 
-          {/* 조건 반복 */}
           {nodeType === 'loop' && loopVariant === 'while' && (
             <Field label="반복 조건" value={loopCondition} onChange={(v) => { setField('loopCondition', v); setErrors(p => ({ ...p, loopCondition: null })) }} placeholder="카운트 < 10" autoFocus hint='참인 동안 반복' error={errors.loopCondition} />
           )}
 
-          {/* 목록 반복 */}
           {nodeType === 'loop' && loopVariant === 'list' && (
             <>
               <Field label="목록 변수" value={listVar} onChange={(v) => { setField('listVar', v); setErrors(p => ({ ...p, listVar: null })) }} placeholder="과일들" autoFocus hint='리스트 변수명' error={errors.listVar} />
@@ -354,7 +396,6 @@ export default function NodeEditModal() {
             </>
           )}
 
-          {/* 함수 선언 */}
           {nodeType === 'function' && (
             <>
               <Field label="함수 이름" value={funcName} onChange={(v) => { setField('funcName', v); setErrors(p => ({ ...p, funcName: null })) }} placeholder="인사하기" autoFocus error={errors.funcName} />
@@ -362,12 +403,11 @@ export default function NodeEditModal() {
             </>
           )}
 
-          {/* 코드 미리보기 */}
           <CodePreview code={preview} />
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-            <button type="button" onClick={handleCancel} style={{ background: '#F3F2FA', color: '#6B6B8B', padding: '7px 18px', borderRadius: 99, border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Noto Sans KR', sans-serif" }}>취소</button>
-            <button type="submit" style={{ background: '#4F46E5', color: '#fff', padding: '7px 18px', borderRadius: 99, border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Noto Sans KR', sans-serif" }}>추가하기</button>
+          <div className={M.footer}>
+            <button type="button" className={M.cancelBtn} onClick={handleCancel}>취소</button>
+            <button type="submit" className={M.submitBtn}>추가하기</button>
           </div>
         </form>
       </div>
