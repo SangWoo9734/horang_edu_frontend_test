@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom'
 import { YaksokSession } from '@dalbit-yaksok/core'
 import { StandardExtension } from '@dalbit-yaksok/standard'
 import { useEditorStore } from '../../stores/editor-store'
@@ -35,10 +36,12 @@ export async function startExecution(): Promise<void> {
     signal: abortController.signal,
     events: {
       runningCode: (start) => {
-        setExecutingLine(start.line)
-        const nodes = useFlowchartStore.getState().nodes
-        const nodeId = findNodeIdByLine(nodes, start.line)
-        setExecutingNodeId(nodeId)
+        flushSync(() => {
+          setExecutingLine(start.line)
+          const nodes = useFlowchartStore.getState().nodes
+          const nodeId = findNodeIdByLine(nodes, start.line)
+          setExecutingNodeId(nodeId)
+        })
       },
       variableSet: ({ name, value }) => {
         setVariable(name, value.toPrint())
