@@ -147,3 +147,30 @@ describe('ast-to-flow: 복합 시나리오', () => {
     expect(main.filter((n) => n.data.nodeType === 'loop')).toHaveLength(1)
   })
 })
+
+// ── 조건문 내부 노드 line 번호 ───────────────────────────
+describe('ast-to-flow: 조건문 내부 노드 line 번호', () => {
+  const code = '나이 = 20\n만약 나이 >= 18 이면\n\t"성인입니다" 보여주기\n아니면\n\t"미성년자입니다" 보여주기'
+
+  it('decision 노드 line은 2 (만약 줄)', () => {
+    const nodes = getNodes(code)
+    const dec = nodes.find((n) => n.data.nodeType === 'decision')
+    console.log('decision line:', dec?.data.line)
+    expect(dec?.data.line).toBe(2)
+  })
+
+  it('참 분기 output 노드 line은 3', () => {
+    const nodes = getNodes(code)
+    const outputs = nodes.filter((n) => n.data.nodeType === 'output')
+    console.log('output nodes:', outputs.map((n) => ({ label: n.data.label, line: n.data.line })))
+    const trueOutput = outputs.find((n) => String(n.data.label).includes('성인'))
+    expect(trueOutput?.data.line).toBe(3)
+  })
+
+  it('거짓 분기 output 노드 line은 5', () => {
+    const nodes = getNodes(code)
+    const falseOutput = nodes.filter((n) => n.data.nodeType === 'output')
+      .find((n) => String(n.data.label).includes('미성년'))
+    expect(falseOutput?.data.line).toBe(5)
+  })
+})
