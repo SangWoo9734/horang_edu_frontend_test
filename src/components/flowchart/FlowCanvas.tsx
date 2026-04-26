@@ -47,6 +47,8 @@ function FlowCanvasInner() {
   const code = useEditorStore((s) => s.code)
   const { nodes, edges, setNodes, setEdges } = useFlowchartStore()
 
+  const executingNodeId = useFlowchartStore((s) => s.executingNodeId)
+
   // 코드 변경 시 순서도 업데이트 (Phase 6 SYN으로 debounce 추가 예정)
   useEffect(() => {
     if (!code) {
@@ -63,6 +65,15 @@ function FlowCanvasInner() {
 
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
   }, [code, setNodes, setEdges, fitView])
+
+  // 실행 중인 노드 하이라이트
+  useEffect(() => {
+    const current = useFlowchartStore.getState().nodes
+    setNodes(current.map((n) => ({
+      ...n,
+      data: { ...n.data, executing: n.id === executingNodeId },
+    })))
+  }, [executingNodeId, setNodes])
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes(applyNodeChanges(changes, nodes) as typeof nodes),
