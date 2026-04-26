@@ -1,4 +1,3 @@
-import { flushSync } from 'react-dom'
 import { YaksokSession } from '@dalbit-yaksok/core'
 import { StandardExtension } from '@dalbit-yaksok/standard'
 import { useEditorStore } from '../../stores/editor-store'
@@ -8,6 +7,7 @@ import { findNodeIdByLine, findDisconnectedNodeIds } from '../flowchart/highligh
 
 let abortController: AbortController | null = null
 let currentSession: YaksokSession | null = null
+let cleanupTimer: ReturnType<typeof setTimeout> | null = null
 
 export async function startExecution(): Promise<void> {
   const { code } = useEditorStore.getState()
@@ -17,6 +17,7 @@ export async function startExecution(): Promise<void> {
   const { setExecutingLine } = useEditorStore.getState()
 
   clearRuntime()
+  if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
 
   // 실행 전: 미연결 노드 감지 및 표시
   const { nodes: currentNodes, edges: currentEdges, setNodes: setFlowNodes } = useFlowchartStore.getState()
@@ -36,12 +37,10 @@ export async function startExecution(): Promise<void> {
     signal: abortController.signal,
     events: {
       runningCode: (start) => {
-        flushSync(() => {
-          setExecutingLine(start.line)
-          const nodes = useFlowchartStore.getState().nodes
-          const nodeId = findNodeIdByLine(nodes, start.line)
-          setExecutingNodeId(nodeId)
-        })
+        setExecutingLine(start.line)
+        const nodes = useFlowchartStore.getState().nodes
+        const nodeId = findNodeIdByLine(nodes, start.line)
+        setExecutingNodeId(nodeId)
       },
       variableSet: ({ name, value }) => {
         setVariable(name, value.toPrint())
@@ -67,11 +66,16 @@ export async function startExecution(): Promise<void> {
     }
   } finally {
     setExecutingLine(null)
-    setExecutingNodeId(null)
     currentSession = null
-    // disconnected 플래그 초기화
-    const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
-    setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
+    // 마지막 실행 노드가 브라우저에 페인트될 수 있도록 다음 macrotask에서 클리어.
+    // executionDelay(setTimeout)가 노드 사이에 macrotask 경계를 만들어 하이라이트를 가능하게
+    // 하는 것과 같은 원리 — 마지막 노드 이후에도 동일한 경계를 하나 더 만든다.
+    cleanupTimer = setTimeout(() => {
+      cleanupTimer = null
+      setExecutingNodeId(null)
+      const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
+      setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
+    }, 0)
   }
 }
 
