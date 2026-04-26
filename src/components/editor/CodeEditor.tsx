@@ -1,6 +1,7 @@
 import Editor, { type Monaco, type OnMount } from '@monaco-editor/react'
 import { DalbitYaksokApplier, LANG_ID } from '@dalbit-yaksok/monaco-language-provider'
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
+import * as monaco from 'monaco-editor'
 import { useEditorStore } from '../../stores/editor-store'
 import { editorInstanceRef } from './editor-ref'
 
@@ -8,9 +9,34 @@ import { editorInstanceRef } from './editor-ref'
 const applier = new DalbitYaksokApplier('')
 let isLanguageRegistered = false
 
+let highlightDecoration: string[] = []
+
 export default function CodeEditor() {
   const setCode = useEditorStore((s) => s.setCode)
+  const executingLine = useEditorStore((s) => s.executingLine)
   const registeredRef = useRef(false)
+
+  // 실행 중인 줄 하이라이트
+  useEffect(() => {
+    const editor = editorInstanceRef.current
+    if (!editor) return
+
+    if (executingLine == null) {
+      highlightDecoration = editor.deltaDecorations(highlightDecoration, [])
+      return
+    }
+
+    highlightDecoration = editor.deltaDecorations(highlightDecoration, [
+      {
+        range: new monaco.Range(executingLine, 1, executingLine, 1),
+        options: {
+          isWholeLine: true,
+          className: 'executing-line-highlight',
+          glyphMarginClassName: 'executing-line-glyph',
+        },
+      },
+    ])
+  }, [executingLine])
 
   const handleBeforeMount = async (monaco: Monaco) => {
     if (!isLanguageRegistered && !registeredRef.current) {

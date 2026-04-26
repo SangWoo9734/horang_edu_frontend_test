@@ -1,1 +1,6 @@
 @layer reset, base, tokens, recipes, utilities;
+
+.executing-line-highlight {
+  background: rgba(253, 230, 138, 0.15) !important;
+  border-left: 2px solid #FDE68A !important;
+}
