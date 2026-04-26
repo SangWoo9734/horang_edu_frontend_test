@@ -1,4 +1,4 @@
-import { css } from 'styled-system/css'
+import { css, cx } from 'styled-system/css'
 import type { ReactNode } from 'react'
 
 interface LayoutProps {
@@ -11,108 +11,57 @@ interface LayoutProps {
   syncBadge?: ReactNode
 }
 
+// 에디터·순서도·콘솔·변수 패널에 공통으로 쓰이는 카드 스타일
+const panelCard = css({
+  bg: 'bgPanel',
+  borderRadius: '14px',
+  border: '1px solid',
+  borderColor: 'border',
+  boxShadow: '0 2px 12px token(colors.primary)/6',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+})
+
 export default function Layout({ topNav, mascot, editor, flowchart, console: consolePanel, variables, syncBadge }: LayoutProps) {
   return (
     <div className={css({
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      bg: 'bgBase',
-      color: 'textPrimary',
-      fontFamily: 'ui',
-      minWidth: '1024px',
-      overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+      height: '100vh', bg: 'bgBase',
+      color: 'textPrimary', fontFamily: 'ui',
+      minWidth: '1024px', overflow: 'hidden',
     })}>
-      {/* 상단 네비 */}
       <header className={css({ flexShrink: 0, zIndex: 20 })}>
         {topNav}
       </header>
 
-      {/* 바디 */}
       <div className={css({ display: 'flex', flex: 1, overflow: 'hidden' })}>
-        {/* 메인 */}
         <div className={css({
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          bg: 'bgBase',
-          p: '3',
-          gap: '2',
+          flex: 1, display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', bg: 'bgBase', p: '3', gap: '2',
         })}>
-          {/* 마스코트 */}
           <div className={css({ flexShrink: 0 })}>{mascot}</div>
 
           {/* 에디터 + 순서도 */}
           <div className={css({
-            display: 'flex',
-            flex: 1,
-            gap: '2',
-            overflow: 'hidden',
-            minHeight: 0,
-            position: 'relative',
+            display: 'flex', flex: 1, gap: '2',
+            overflow: 'hidden', minHeight: 0, position: 'relative',
           })}>
-            <div className={css({
-              flex: 1, minWidth: 0,
-              bg: 'bgPanel',
-              borderRadius: '14px',
-              border: '1px solid',
-              borderColor: 'border',
-              boxShadow: '0 2px 12px token(colors.primary)10',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            })}>
+            <div className={cx(panelCard, css({ flex: 1, minWidth: 0 }))}>
               {editor}
             </div>
             {syncBadge}
-            <div className={css({
-              flex: 1, minWidth: 0,
-              bg: 'bgPanel',
-              borderRadius: '14px',
-              border: '1px solid',
-              borderColor: 'border',
-              boxShadow: '0 2px 12px token(colors.primary)10',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            })}>
+            <div className={cx(panelCard, css({ flex: 1, minWidth: 0 }))}>
               {flowchart}
             </div>
           </div>
 
           {/* 콘솔 + 변수 */}
-          <div className={css({
-            display: 'flex',
-            gap: '2',
-            height: '160px',
-            flexShrink: 0,
-          })}>
-            <div className={css({
-              flex: 1,
-              bg: 'bgPanel',
-              borderRadius: '14px',
-              border: '1px solid',
-              borderColor: 'border',
-              boxShadow: '0 2px 12px token(colors.primary)10',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            })}>
+          <div className={css({ display: 'flex', gap: '2', height: '160px', flexShrink: 0 })}>
+            <div className={cx(panelCard, css({ flex: 1 }))}>
               {consolePanel}
             </div>
-            <div className={css({
-              width: '260px',
-              flexShrink: 0,
-              bg: 'bgPanel',
-              borderRadius: '14px',
-              border: '1px solid',
-              borderColor: 'border',
-              boxShadow: '0 2px 12px token(colors.primary)10',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            })}>
+            <div className={cx(panelCard, css({ width: '260px', flexShrink: 0 }))}>
               {variables}
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { css } from 'styled-system/css'
+import { css, cx } from 'styled-system/css'
 import Layout from './app/layout'
 import { useExecutionStore } from './stores/execution-store'
 import { useEditorStore } from './stores/editor-store'
@@ -15,7 +15,114 @@ import HelpModal from './components/HelpModal'
 import { startExecution, stopExecution, pauseExecution, resumeExecution } from './lib/yaksok/runner'
 import { editorInstanceRef } from './components/editor/editor-ref'
 
-// ── 달빛약속 3원 로고 ──────────────────────────
+// ── 공통 스타일 ──────────────────────────────
+const S = {
+  nav: css({
+    height: '52px', bg: 'white',
+    borderBottom: '1px solid', borderColor: 'border',
+    display: 'flex', alignItems: 'center',
+    paddingX: '5',
+  }),
+  logoLink: css({
+    display: 'flex', alignItems: 'center', gap: '1.5',
+    marginRight: '8', textDecoration: 'none',
+  }),
+  logoText: css({
+    fontWeight: '700', fontSize: '15px',
+    color: 'textPrimary', letterSpacing: '-0.3px',
+    fontFamily: 'ui',
+  }),
+  navRight: css({
+    marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '2',
+  }),
+  speedLabel: css({
+    fontSize: '11px', fontWeight: '600',
+    color: 'textSub', whiteSpace: 'nowrap', fontFamily: 'ui',
+  }),
+  ghostBtn: css({
+    display: 'flex', alignItems: 'center', gap: '1',
+    paddingX: '2.5', paddingY: '1.5',
+    borderRadius: '8px',
+    border: '1px solid', borderColor: 'border',
+    bg: 'bgSubtle', fontSize: '12px', fontWeight: '500',
+    color: 'textMid', fontFamily: 'ui', cursor: 'pointer',
+  }),
+  primaryBtn: css({
+    display: 'flex', alignItems: 'center', gap: '1.5',
+    paddingX: '3.5', paddingY: '1.5',
+    borderRadius: '8px', border: 'none',
+    bg: 'primary', fontSize: '12px', fontWeight: '700',
+    color: 'white', fontFamily: 'ui', cursor: 'pointer',
+  }),
+  divider: css({
+    width: '1px', height: '20px',
+    bg: 'border', marginX: '1',
+  }),
+  helpBtn: css({
+    display: 'flex', alignItems: 'center', gap: '1.5',
+    paddingX: '3', paddingY: '1.5', borderRadius: '8px',
+    border: '1.5px solid', borderColor: 'accent',
+    bg: 'bgBase', fontSize: '12px', fontWeight: '700',
+    color: 'primary', fontFamily: 'ui', cursor: 'pointer',
+  }),
+  userBadge: css({
+    display: 'flex', alignItems: 'center', gap: '1.5',
+    paddingX: '2.5', paddingY: '1.5', borderRadius: '8px',
+    border: '1px solid', borderColor: 'border',
+    bg: 'bgSubtle', fontSize: '12px', fontWeight: '500',
+    color: 'textMid', fontFamily: 'ui',
+  }),
+  cardHeader: css({
+    height: '40px', display: 'flex', alignItems: 'center',
+    paddingX: '3.5', gap: '2',
+    borderBottom: '1px solid', borderColor: 'bgBase',
+    flexShrink: '0',
+  }),
+  cardTitle: css({
+    fontSize: '12px', fontWeight: '700',
+    color: 'textMid', fontFamily: 'ui',
+    display: 'flex', alignItems: 'center', gap: '1.5',
+  }),
+  cardActions: css({
+    marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1.5',
+  }),
+  smallBtn: css({
+    fontSize: '10px', paddingX: '2', paddingY: '0.5',
+    borderRadius: '6px', border: '1px solid', borderColor: 'border',
+    bg: 'bgSubtle', color: 'textMid', fontFamily: 'ui', cursor: 'pointer',
+  }),
+  syncBadgeWrap: css({
+    position: 'absolute', left: '50%', top: '50%',
+    transform: 'translate(-50%, -50%)',
+    zIndex: '10', pointerEvents: 'none',
+    transition: 'opacity 0.25s ease',
+  }),
+  syncBadge: css({
+    bg: 'primary', color: 'white',
+    fontSize: '11px', fontWeight: '700',
+    paddingX: '3.5', paddingY: '1.5',
+    borderRadius: '99px', whiteSpace: 'nowrap',
+    boxShadow: '0 4px 16px token(colors.primary)/35',
+    display: 'flex', alignItems: 'center', gap: '1.5',
+    letterSpacing: '0.2px', fontFamily: 'ui',
+  }),
+  dropdownWrap: css({ position: 'relative' }),
+  dropdownMenu: css({
+    position: 'absolute', top: 'calc(100% + 6px)', left: '0',
+    bg: 'white', border: '1.5px solid', borderColor: 'border',
+    borderRadius: '10px', boxShadow: '0 8px 24px token(colors.primary)/6',
+    minWidth: '200px', zIndex: '50', overflow: 'hidden',
+  }),
+  dropdownItem: css({
+    padding: '9px 14px', fontSize: '12px', fontWeight: '500',
+    color: 'textPrimary', cursor: 'pointer', fontFamily: 'ui',
+    borderBottom: '1px solid', borderColor: 'bgBase',
+    _hover: { bg: 'bgBase' },
+    transition: 'background 0.1s',
+  }),
+}
+
+// ── 달빛약속 로고 ─────────────────────────────
 function Logo() {
   return (
     <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
@@ -27,27 +134,32 @@ function Logo() {
 }
 
 // ── 상태 칩 ─────────────────────────────────
+const chipBase = css({
+  display: 'inline-flex', alignItems: 'center', gap: '1',
+  paddingX: '2.5', paddingY: '0.5',
+  borderRadius: '99px', fontSize: '11px', fontWeight: '700',
+  fontFamily: 'ui',
+})
 const CHIP_STYLES = {
-  idle:    { bg: '#F3F2FA', color: '#8B8B9E' },
-  running: { bg: '#EEF0FF', color: '#4F46E5' },
-  paused:  { bg: '#FEF9C3', color: '#92400E' },
-  done:    { bg: '#DCFCE7', color: '#166534' },
-  error:   { bg: '#FEE2E2', color: '#991B1B' },
+  idle:    { bg: 'token(colors.bgBase)',   color: 'token(colors.textMuted)' },
+  running: { bg: 'token(colors.bgActive)', color: 'token(colors.primary)' },
+  paused:  { bg: '#FEF9C3',               color: '#92400E' },
+  done:    { bg: '#DCFCE7',               color: '#166534' },
+  error:   { bg: '#FEE2E2',               color: '#991B1B' },
 }
 const CHIP_LABEL = { idle: '대기 중', running: '실행 중', paused: '일시정지', done: '완료', error: '오류' }
 
 function StatusChip() {
   const status = useExecutionStore((s) => s.status)
   const { bg, color } = CHIP_STYLES[status] ?? CHIP_STYLES.idle
-
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '3px 10px', borderRadius: 99,
-      fontSize: 11, fontWeight: 700,
-      background: bg, color,
-      animation: status === 'running' ? 'chipPulse 1.2s infinite' : undefined,
-    }}>
+    <span
+      className={chipBase}
+      style={{
+        background: bg, color,
+        animation: status === 'running' ? 'chipPulse 1.2s infinite' : undefined,
+      }}
+    >
       <span style={{ fontSize: 8, lineHeight: 1 }}>●</span>
       {CHIP_LABEL[status]}
     </span>
@@ -72,25 +184,8 @@ function SyncBadge() {
   }, [lastEditSource])
 
   return (
-    <div style={{
-      position: 'absolute',
-      left: '50%', top: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: 10, pointerEvents: 'none',
-      opacity: visible ? 1 : 0,
-      transition: 'opacity 0.25s ease',
-    }}>
-      <div style={{
-        background: '#4F46E5',
-        color: '#fff',
-        fontSize: 11, fontWeight: 700,
-        padding: '6px 14px',
-        borderRadius: 99,
-        whiteSpace: 'nowrap',
-        boxShadow: '0 4px 16px rgba(79,70,229,0.35)',
-        display: 'flex', alignItems: 'center', gap: 6,
-        letterSpacing: 0.2,
-      }}>
+    <div className={S.syncBadgeWrap} style={{ opacity: visible ? 1 : 0 }}>
+      <div className={S.syncBadge}>
         {dir === 'c2f' ? '코드 → 순서도' : '순서도 → 코드'}
       </div>
     </div>
@@ -112,38 +207,17 @@ function ExampleDropdown({ onSelect }: { onSelect: (code: string) => void }) {
   }, [open])
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          padding: '5px 12px', borderRadius: 8,
-          border: '1px solid #EEEDF8', background: '#FAFAFE',
-          fontSize: 12, fontWeight: 500, color: '#4B4B6B',
-          cursor: 'pointer', transition: 'all .15s',
-        }}
-      >
+    <div ref={ref} className={S.dropdownWrap}>
+      <button className={S.ghostBtn} onClick={() => setOpen((v) => !v)}>
         예제 코드 {open ? '▴' : '▾'}
       </button>
       {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-          background: '#fff', border: '1.5px solid #EEEDF8',
-          borderRadius: 10, boxShadow: '0 8px 24px #4F46E510',
-          minWidth: 200, zIndex: 50, overflow: 'hidden',
-        }}>
+        <div className={S.dropdownMenu}>
           {EXAMPLES.map((ex) => (
             <div
               key={ex.id}
+              className={S.dropdownItem}
               onClick={() => { onSelect(ex.code); setOpen(false) }}
-              style={{
-                padding: '9px 14px', fontSize: 12, fontWeight: 500,
-                color: '#1A1A2E', cursor: 'pointer',
-                borderBottom: '1px solid #F3F2FA',
-                transition: 'background .1s',
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#F3F2FA' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = '' }}
             >
               {ex.title}
             </div>
@@ -161,27 +235,18 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
   const isRunning = status === 'running'
   const isPaused = status === 'paused'
   const isIdle = status === 'idle' || status === 'done' || status === 'error'
-
   const speedPct = ((executionDelay / 2000) * 100).toFixed(0)
 
   return (
-    <nav style={{
-      height: 52, background: '#fff',
-      borderBottom: '1px solid #EEEDF8',
-      display: 'flex', alignItems: 'center',
-      padding: '0 20px', gap: 0,
-    }}>
-      {/* 로고 */}
-      <a style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 32, textDecoration: 'none' }} href="#">
+    <nav className={S.nav}>
+      <a className={S.logoLink} href="#">
         <Logo/>
-        <span style={{ fontWeight: 700, fontSize: 15, color: '#1A1A2E', letterSpacing: -0.3 }}>달빛약속</span>
+        <span className={S.logoText}>달빛약속</span>
       </a>
 
-      {/* 오른쪽 컨트롤 */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* 속도 슬라이더 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#6B6B8B', whiteSpace: 'nowrap' }}>속도</span>
+      <div className={S.navRight}>
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
+          <span className={S.speedLabel}>속도</span>
           <input
             type="range" min={0} max={2000} step={100}
             value={executionDelay}
@@ -192,75 +257,39 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
         </div>
 
         <button
+          className={S.ghostBtn}
           onClick={() => isPaused ? resumeExecution() : pauseExecution()}
           disabled={isIdle}
-          className={css({ fontFamily: 'ui' })}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            padding: '5px 10px', borderRadius: 8,
-            border: '1px solid #EEEDF8', background: '#FAFAFE',
-            fontSize: 12, fontWeight: 500, color: '#4B4B6B',
-            cursor: isIdle ? 'not-allowed' : 'pointer',
-            opacity: isIdle ? 0.4 : 1, transition: 'all .15s',
-          }}
+          style={{ cursor: isIdle ? 'not-allowed' : 'pointer', opacity: isIdle ? 0.4 : 1 }}
         >
           {isPaused ? '▶ 계속' : '⏸ 멈춤'}
         </button>
 
         <button
+          className={S.ghostBtn}
           onClick={stopExecution}
           disabled={isIdle}
-          className={css({ fontFamily: 'ui' })}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            padding: '5px 10px', borderRadius: 8,
-            border: '1px solid #EEEDF8', background: '#FAFAFE',
-            fontSize: 12, fontWeight: 500, color: '#4B4B6B',
-            cursor: isIdle ? 'not-allowed' : 'pointer',
-            opacity: isIdle ? 0.4 : 1,
-          }}
+          style={{ cursor: isIdle ? 'not-allowed' : 'pointer', opacity: isIdle ? 0.4 : 1 }}
         >⏹</button>
 
         <button
+          className={cx(S.primaryBtn, css({ opacity: isRunning || isPaused ? 0.45 : 1 }))}
           onClick={() => startExecution()}
           disabled={isRunning || isPaused}
-          className={css({ fontFamily: 'ui' })}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 14px', borderRadius: 8,
-            border: 'none', background: '#4F46E5',
-            fontSize: 12, fontWeight: 700, color: '#fff',
-            cursor: isRunning || isPaused ? 'not-allowed' : 'pointer',
-            opacity: isRunning || isPaused ? 0.45 : 1,
-          }}
+          style={{ cursor: isRunning || isPaused ? 'not-allowed' : 'pointer' }}
         >▶ 실행하기</button>
 
         <StatusChip/>
 
-        <div style={{ width: 1, height: 20, background: '#EEEDF8', margin: '0 4px' }}/>
+        <div className={S.divider}/>
 
         <ExampleDropdown onSelect={onSelectExample} />
 
-        {/* 도움말 버튼 */}
-        <button
-          onClick={onHelp}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 12px', borderRadius: 8,
-            border: '1.5px solid #C4B5FD', background: '#F3F2FA',
-            fontSize: 12, fontWeight: 700, color: '#4F46E5',
-            cursor: 'pointer', transition: 'all .15s',
-          }}
-        >
+        <button className={S.helpBtn} onClick={onHelp}>
           📖 사용 방법
         </button>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '5px 10px', borderRadius: 8,
-          border: '1px solid #EEEDF8', background: '#FAFAFE',
-          fontSize: 12, fontWeight: 500, color: '#4B4B6B', cursor: 'pointer',
-        }}>
+        <div className={S.userBadge}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
           </svg>
@@ -274,34 +303,26 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
 }
 
 // ── 카드 헤더 ────────────────────────────────
-function CardHeader({ dotColor, title, meta, actions }: { dotColor: string; title: string; meta?: string; actions?: React.ReactNode }) {
+function CardHeader({ dotColor, title, meta, actions }: {
+  dotColor: string; title: string; meta?: string; actions?: React.ReactNode
+}) {
   return (
-    <div style={{
-      height: 40, display: 'flex', alignItems: 'center',
-      padding: '0 14px', gap: 8,
-      borderBottom: '1px solid #F3F2FA', flexShrink: 0,
-    }}>
+    <div className={S.cardHeader}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }}/>
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#4B4B6B', display: 'flex', alignItems: 'center', gap: 6 }}>
-        {title}
-      </span>
-      {meta && <span style={{ marginLeft: 8, fontSize: 10, color: '#8B8B9E', fontWeight: 500 }}>{meta}</span>}
-      {actions && <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>{actions}</div>}
+      <span className={S.cardTitle}>{title}</span>
+      {meta && (
+        <span className={css({ marginLeft: '2', fontSize: '10px', color: 'textMuted', fontWeight: '500', fontFamily: 'ui' })}>
+          {meta}
+        </span>
+      )}
+      {actions && <div className={S.cardActions}>{actions}</div>}
     </div>
   )
 }
 
 function SmallBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={css({ fontFamily: 'ui' })}
-      style={{
-        fontSize: 10, padding: '3px 8px', borderRadius: 6,
-        border: '1px solid #EEEDF8', background: '#FAFAFE',
-        color: '#4B4B6B', cursor: 'pointer',
-      }}
-    >{children}</button>
+    <button className={S.smallBtn} onClick={onClick}>{children}</button>
   )
 }
 
@@ -314,6 +335,7 @@ export default function App() {
     setCode(code)
     editorInstanceRef.current?.setValue(code)
   }, [setCode])
+
   const status = useExecutionStore((s) => s.status)
   const executingLine = useEditorStore((s) => s.executingLine)
   const code = useEditorStore((s) => s.code)
@@ -324,25 +346,25 @@ export default function App() {
 
   return (
     <>
-    <Layout
-      topNav={<TopNav onHelp={() => setHelpOpen(true)} onSelectExample={handleSelectExample}/>}
-      syncBadge={<SyncBadge/>}
-      mascot={<Mascot status={status} currentLine={currentLineText}/>}
-      editor={
-        <>
-          <CardHeader
-            dotColor="#4F46E5"
-            title="코드 작성"
-            actions={<SmallBtn onClick={() => { setCode(''); editorInstanceRef.current?.setValue('') }}>초기화</SmallBtn>}
-          />
-          <CodeEditor/>
-        </>
-      }
-      flowchart={<FlowCanvas/>}
-      console={<ConsolePanel/>}
-      variables={<VariablePanel/>}
-    />
-    {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+      <Layout
+        topNav={<TopNav onHelp={() => setHelpOpen(true)} onSelectExample={handleSelectExample}/>}
+        syncBadge={<SyncBadge/>}
+        mascot={<Mascot status={status} currentLine={currentLineText}/>}
+        editor={
+          <>
+            <CardHeader
+              dotColor="token(colors.primary)"
+              title="코드 작성"
+              actions={<SmallBtn onClick={() => { setCode(''); editorInstanceRef.current?.setValue('') }}>초기화</SmallBtn>}
+            />
+            <CodeEditor/>
+          </>
+        }
+        flowchart={<FlowCanvas/>}
+        console={<ConsolePanel/>}
+        variables={<VariablePanel/>}
+      />
+      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
     </>
   )
 }

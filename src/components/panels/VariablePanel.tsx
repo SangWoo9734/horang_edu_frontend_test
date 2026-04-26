@@ -1,58 +1,61 @@
+import { css } from 'styled-system/css'
 import { useExecutionStore } from '../../stores/execution-store'
+
+const S = {
+  root: css({ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }),
+  header: css({
+    height: '32px', display: 'flex', alignItems: 'center',
+    paddingX: '3', gap: '1.5',
+    borderBottom: '1px solid', borderColor: 'bgBase', flexShrink: 0,
+  }),
+  dot: css({ width: '6px', height: '6px', borderRadius: 'full', bg: 'nodeDecision', flexShrink: 0 }),
+  title: css({ fontSize: '11px', fontWeight: '700', color: 'textMid', fontFamily: 'ui' }),
+  body: css({
+    flex: 1, overflowY: 'auto',
+    padding: '1', display: 'flex', flexDirection: 'column', gap: '0.5',
+  }),
+  empty: css({ color: 'textAccent', fontSize: '12px', padding: '1.5', fontFamily: 'ui' }),
+  varRow: css({
+    display: 'flex', alignItems: 'center',
+    paddingX: '2', paddingY: '0.5',
+    bg: 'bgSubtle', borderRadius: '6px',
+    border: '1px solid', borderColor: 'border',
+    gap: '1.5', minWidth: 0,
+  }),
+  varName: css({
+    color: 'primary', fontFamily: 'code',
+    fontSize: '12px', fontWeight: '700', flexShrink: 0,
+  }),
+  varEq: css({ color: 'accent', fontSize: '12px', flexShrink: 0 }),
+  varValue: css({
+    color: 'nodeDecision', fontFamily: 'code',
+    fontSize: '12px', fontWeight: '600',
+    marginLeft: 'auto',
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    maxWidth: '140px',
+  }),
+}
 
 export default function VariablePanel() {
   const variables = useExecutionStore((s) => s.variables)
   const entries = Object.entries(variables)
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{
-        height: 32, display: 'flex', alignItems: 'center',
-        padding: '0 12px', gap: 6,
-        borderBottom: '1px solid #F3F2FA', flexShrink: 0,
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }}/>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#4B4B6B' }}>변수 현황판</span>
+    <div className={S.root}>
+      <div className={S.header}>
+        <span className={S.dot}/>
+        <span className={S.title}>변수 현황판</span>
       </div>
 
-      <div style={{
-        flex: 1, overflowY: 'auto',
-        padding: '4px 8px',
-        display: 'flex', flexDirection: 'column', gap: 2,
-      }}>
+      <div className={S.body}>
         {entries.length === 0 ? (
-          <span style={{ color: '#C4B5FD', fontSize: 10.5, padding: '2px 4px' }}>
-            실행하면 변수가 여기 나타나요
-          </span>
+          <span className={S.empty}>실행하면 변수가 여기 나타나요</span>
         ) : (
           entries.map(([name, value]) => (
-            <div key={name} style={{
-              display: 'flex', alignItems: 'center',
-              padding: '3px 8px',
-              background: '#FAFAFE',
-              borderRadius: 6,
-              border: '1px solid #EEEDF8',
-              gap: 6, minWidth: 0,
-            }}>
-              <span style={{
-                color: '#4F46E5',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 12, fontWeight: 700,
-                flexShrink: 0,
-              }}>
-                {name}
-              </span>
-              <span style={{ color: '#C4B5FD', fontSize: 12, flexShrink: 0 }}>=</span>
-              <span style={{
-                color: '#D97706',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 12, fontWeight: 600,
-                marginLeft: 'auto',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                maxWidth: '140px',
-              }}>
-                {String(value)}
-              </span>
+            <div key={name} className={S.varRow}>
+              <span className={S.varName}>{name}</span>
+              <span className={S.varEq}>=</span>
+              <span className={S.varValue}>{String(value)}</span>
             </div>
           ))
         )}
