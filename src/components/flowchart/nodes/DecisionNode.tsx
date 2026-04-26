@@ -19,8 +19,8 @@ export default function DecisionNode({ data, isConnectable }: NodeProps<AppFlowN
         <span style={{ fontSize: 8, color: d.disconnected ? '#F97316' : col, fontWeight: 700, opacity: 0.65 }}>{d.disconnected ? '⚠️ 연결 끊김' : '판단'}</span>
         <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: d.executing ? col : '#1A1A2E', textAlign: 'center', padding: '0 16px', wordBreak: 'break-all', lineHeight: 1.2 }}>{d.label}</span>
       </div>
-      <Handle type="source" position={Position.Right} id="true" isConnectable={isConnectable}/>
-      <Handle type="source" position={Position.Bottom} id="false" isConnectable={isConnectable}/>
+      <Handle type="source" position={Position.Left} id="true" isConnectable={isConnectable}/>
+      <Handle type="source" position={Position.Right} id="false" isConnectable={isConnectable}/>
     </div>
   )
 }

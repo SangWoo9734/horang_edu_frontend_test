@@ -27,7 +27,13 @@ export function applyLayout(
     g.setNode(node.id, { width: size.width, height: size.height })
   }
 
+  type EdgeData = { edgeType?: string }
+
   for (const edge of edges) {
+    const et = (edge.data as EdgeData)?.edgeType
+    // back 엣지만 제외 — ast-to-flow에서 loop이 bodyTails를 반환하므로
+    // exit는 이미 body_tail → exit 구조로 생성됨
+    if (et === 'back') continue
     g.setEdge(edge.source, edge.target)
   }
 

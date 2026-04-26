@@ -141,13 +141,36 @@ function generateBlock(
     } else if (nodeType === 'loop') {
       lines.push(nodeToCodeLine(node, depth))
 
-      // 'body' 태그 우선, 없으면 첫 번째 비-back 엣지 (사용자가 직접 그린 경우 fallback)
       const bodyEdge =
         outEdges.find((e) => (e.data as EdgeData)?.edgeType === 'body') ??
         outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
       if (bodyEdge) {
-        lines.push(...generateBlock(bodyEdge.target, outgoing, incoming, nodeMap, depth + 1, new Set(visited), new Set([...stopIds, currentId])))
+        // body tail: loop로 back 엣지를 가진 노드들
+        const bodyTailSrcs = (incoming.get(currentId) ?? [])
+          .filter((e) => (e.data as EdgeData)?.edgeType === 'back')
+          .map((e) => e.source)
+
+        // exit: body tail에서 back이 아닌 방향으로 나가는 노드 (loop 자신 제외)
+        const exitIds = new Set<string>()
+        for (const src of bodyTailSrcs) {
+          for (const e of outgoing.get(src) ?? []) {
+            const et = (e.data as EdgeData)?.edgeType
+            if (et !== 'back' && e.target !== currentId) exitIds.add(e.target)
+          }
+        }
+
+        // body는 depth+1로, exit 노드에서 멈춤
+        lines.push(...generateBlock(
+          bodyEdge.target, outgoing, incoming, nodeMap,
+          depth + 1, new Set(visited),
+          new Set([...stopIds, currentId, ...exitIds]),
+        ))
+
+        // exit 노드부터 outer depth로 계속
+        const exitId = exitIds.values().next().value
+        if (exitId) { currentId = exitId; continue }
       }
+      break
     } else if (nodeType === 'function') {
       lines.push(nodeToCodeLine(node, depth))
 

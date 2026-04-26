@@ -139,7 +139,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
     const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
-    return [id]
+    return bodyTails  // exit는 loop가 아닌 body tail에서 연결
   }
 
   if (node instanceof ConditionalLoop) {
@@ -156,7 +156,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
     const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
-    return [id]
+    return bodyTails
   }
 
   if (node instanceof ListLoop) {
@@ -174,7 +174,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
     const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
-    return [id]
+    return bodyTails
   }
 
   if (node instanceof DeclareFunction) {

@@ -16,8 +16,10 @@ export default function AnimatedEdge({
   const isFalse = edgeType === 'false'
   const isBack = edgeType === 'back'
 
+  if (isBack) return null  // back 엣지는 렌더링하지 않음 (flow-to-code용으로 state만 유지)
+
   const stroke = isTrue ? '#4ADE80' : isFalse ? '#F87171' : '#94A3B8'
-  const strokeDash = isFalse || isBack ? '6 4' : undefined
+  const strokeDash = isFalse ? '6 4' : undefined
 
   const [edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
 
