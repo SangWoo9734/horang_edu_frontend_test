@@ -2,15 +2,16 @@ import { css } from 'styled-system/css'
 import type { ReactNode } from 'react'
 
 interface LayoutProps {
-  header: ReactNode
+  topNav: ReactNode
+  sidebar: ReactNode
+  mascot: ReactNode
   editor: ReactNode
   flowchart: ReactNode
   console: ReactNode
   variables: ReactNode
-  footer: ReactNode
 }
 
-export default function Layout({ header, editor, flowchart, console: consolePanel, variables, footer }: LayoutProps) {
+export default function Layout({ topNav, sidebar, mascot, editor, flowchart, console: consolePanel, variables }: LayoutProps) {
   return (
     <div className={css({
       display: 'flex',
@@ -22,79 +23,102 @@ export default function Layout({ header, editor, flowchart, console: consolePane
       minWidth: '1024px',
       overflow: 'hidden',
     })}>
-      {/* 헤더 */}
-      <header className={css({
-        flexShrink: 0,
-        height: '48px',
-        bg: 'bgPanel',
-        borderBottom: '1px solid',
-        borderColor: 'rgba(255,255,255,0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        px: '4',
-      })}>
-        {header}
+      {/* 상단 네비 */}
+      <header className={css({ flexShrink: 0, zIndex: 20 })}>
+        {topNav}
       </header>
 
-      {/* 메인 패널 (상단 70%) */}
-      <div className={css({
-        flex: '7',
-        display: 'flex',
-        overflow: 'hidden',
-      })}>
-        {/* 좌상: 코드 에디터 */}
-        <div className={css({
-          flex: '1',
-          borderRight: '1px solid',
-          borderColor: 'rgba(255,255,255,0.08)',
-          overflow: 'hidden',
-        })}>
-          {editor}
-        </div>
+      {/* 바디 */}
+      <div className={css({ display: 'flex', flex: 1, overflow: 'hidden' })}>
+        {/* 사이드바 */}
+        {sidebar}
 
-        {/* 우상: 순서도 캔버스 */}
-        <div className={css({ flex: '1', overflow: 'hidden' })}>
-          {flowchart}
+        {/* 메인 */}
+        <div className={css({
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          bg: 'bgBase',
+          p: '3',
+          gap: '2',
+        })}>
+          {/* 마스코트 */}
+          <div className={css({ flexShrink: 0 })}>{mascot}</div>
+
+          {/* 에디터 + 순서도 */}
+          <div className={css({
+            display: 'flex',
+            flex: 1,
+            gap: '2',
+            overflow: 'hidden',
+            minHeight: 0,
+          })}>
+            <div className={css({
+              flex: 1, minWidth: 0,
+              bg: 'bgPanel',
+              borderRadius: '14px',
+              border: '1px solid',
+              borderColor: 'border',
+              boxShadow: '0 2px 12px token(colors.primary)10',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            })}>
+              {editor}
+            </div>
+            <div className={css({
+              flex: 1, minWidth: 0,
+              bg: 'bgPanel',
+              borderRadius: '14px',
+              border: '1px solid',
+              borderColor: 'border',
+              boxShadow: '0 2px 12px token(colors.primary)10',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            })}>
+              {flowchart}
+            </div>
+          </div>
+
+          {/* 콘솔 + 변수 */}
+          <div className={css({
+            display: 'flex',
+            gap: '2',
+            height: '160px',
+            flexShrink: 0,
+          })}>
+            <div className={css({
+              flex: 1,
+              bg: 'bgPanel',
+              borderRadius: '14px',
+              border: '1px solid',
+              borderColor: 'border',
+              boxShadow: '0 2px 12px token(colors.primary)10',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            })}>
+              {consolePanel}
+            </div>
+            <div className={css({
+              width: '260px',
+              flexShrink: 0,
+              bg: 'bgPanel',
+              borderRadius: '14px',
+              border: '1px solid',
+              borderColor: 'border',
+              boxShadow: '0 2px 12px token(colors.primary)10',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            })}>
+              {variables}
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* 하단 패널 (30%) */}
-      <div className={css({
-        flex: '3',
-        display: 'flex',
-        borderTop: '1px solid',
-        borderColor: 'rgba(255,255,255,0.08)',
-        overflow: 'hidden',
-      })}>
-        {/* 좌하: 콘솔 */}
-        <div className={css({
-          flex: '1',
-          borderRight: '1px solid',
-          borderColor: 'rgba(255,255,255,0.08)',
-          overflow: 'hidden',
-        })}>
-          {consolePanel}
-        </div>
-
-        {/* 우하: 변수 패널 */}
-        <div className={css({ flex: '1', overflow: 'hidden' })}>
-          {variables}
-        </div>
-      </div>
-
-      {/* 푸터 */}
-      <footer className={css({
-        flexShrink: 0,
-        height: '44px',
-        bg: 'bgPanel',
-        borderTop: '1px solid',
-        borderColor: 'rgba(255,255,255,0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        px: '4',
-      })}>
-        {footer}
-      </footer>
     </div>
   )
 }

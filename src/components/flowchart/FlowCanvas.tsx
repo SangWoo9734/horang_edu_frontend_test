@@ -189,31 +189,67 @@ function FlowCanvasInner() {
   )
 
   return (
-    <div style={{ width: '100%', height: '100%', background: '#0F0F1A', position: 'relative' }}>
-      <NodePalette />
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodesDelete={onNodesDelete}
-        onEdgesDelete={onEdgesDelete}
-        onNodeClick={onNodeClick}
-        onNodeDoubleClick={onNodeDoubleClick}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        fitView
-        deleteKeyCode="Delete"
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background color="#2A2A3E" gap={20} />
-        <Controls />
-      </ReactFlow>
+    <>
+      {/* 카드 헤더 */}
+      <div style={{
+        height: 40, display: 'flex', alignItems: 'center',
+        padding: '0 14px', gap: 8,
+        borderBottom: '1px solid #F3F2FA', flexShrink: 0,
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', flexShrink: 0 }}/>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#4B4B6B' }}>순서도</span>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#B0AECF' }}>
+          {nodes.filter(n => n.data.nodeType !== 'terminal').length}개 노드
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, position: 'relative' }}>
+        <NodePalette />
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          {nodes.length === 0 && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 1,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: 10, pointerEvents: 'none',
+            }}>
+              <div style={{ fontSize: 44, animation: 'float 3s ease-in-out infinite' }}>🌙</div>
+              <p style={{ color: '#C4B5FD', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.7 }}>
+                왼쪽에서 코드를 쓰면<br/>순서도가 짠! 하고 나와요
+              </p>
+            </div>
+          )}
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodesDelete={onNodesDelete}
+            onEdgesDelete={onEdgesDelete}
+            onNodeClick={onNodeClick}
+            onNodeDoubleClick={onNodeDoubleClick}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            fitView
+            deleteKeyCode="Delete"
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background
+              color="#D4CFFE"
+              gap={24}
+              size={1.2}
+              variant={'dots' as import('@xyflow/react').BackgroundVariant}
+            />
+            <Controls />
+          </ReactFlow>
+        </div>
+      </div>
       <NodeEditModal />
-    </div>
+      <style>{`@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}`}</style>
+    </>
   )
 }
 

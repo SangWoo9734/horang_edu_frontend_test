@@ -58,6 +58,26 @@ export default function CodeEditor() {
       isLanguageRegistered = true
       await applier.register(monacoInstance.languages)
     }
+    // 달빛 라이트 테마
+    monacoInstance.editor.defineTheme('dalbit-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: '4F46E5', fontStyle: 'bold' },
+        { token: 'string', foreground: '059669' },
+        { token: 'number', foreground: 'DC2626' },
+      ],
+      colors: {
+        'editor.background': '#FFFFFF',
+        'editor.foreground': '#1A1A2E',
+        'editor.lineHighlightBackground': '#EEF0FF',
+        'editor.selectionBackground': '#C4B5FD40',
+        'editorLineNumber.foreground': '#C4B5FD',
+        'editorLineNumber.activeForeground': '#4F46E5',
+        'editorCursor.foreground': '#4F46E5',
+        'editor.inactiveSelectionBackground': '#C4B5FD20',
+      },
+    })
   }
 
   const handleMount: OnMount = (editorInstance) => {
@@ -82,7 +102,7 @@ export default function CodeEditor() {
       height="100%"
       language={LANG_ID}
       defaultValue=""
-      theme="vs-dark"
+      theme="dalbit-light"
       beforeMount={handleBeforeMount}
       onMount={handleMount}
       options={{

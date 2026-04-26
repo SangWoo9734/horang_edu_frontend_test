@@ -1,4 +1,3 @@
-import { css } from 'styled-system/css'
 import { useExecutionStore } from '../../stores/execution-store'
 
 export default function VariablePanel() {
@@ -6,61 +5,41 @@ export default function VariablePanel() {
   const entries = Object.entries(variables)
 
   return (
-    <div className={css({
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      bg: 'bgPanel',
-      overflow: 'hidden',
-    })}>
-      <div className={css({
-        px: '3',
-        py: '1',
-        fontSize: '11px',
-        color: 'textSecondary',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0,
-      })}>
-        변수 상태
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* 헤더 */}
+      <div style={{
+        height: 40, display: 'flex', alignItems: 'center',
+        padding: '0 14px', gap: 8,
+        borderBottom: '1px solid #F3F2FA', flexShrink: 0,
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }}/>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#4B4B6B' }}>변수 현황판</span>
       </div>
-      <div className={css({
-        flex: 1,
-        overflowY: 'auto',
-        p: '3',
-      })}>
+
+      {/* 변수 목록 */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {entries.length === 0 ? (
-          <span className={css({ fontSize: '12px', color: 'textSecondary' })}>
-            실행 중 변수가 여기에 표시됩니다.
-          </span>
+          <div style={{ color: '#C4B5FD', fontSize: 11, padding: '2px 8px', fontWeight: 500 }}>
+            실행하면 변수가 여기 나타나요!
+          </div>
         ) : (
-          <table className={css({ width: '100%', borderCollapse: 'collapse' })}>
-            <tbody>
-              {entries.map(([name, value]) => (
-                <tr key={name}>
-                  <td className={css({
-                    py: '1',
-                    pr: '3',
-                    fontFamily: 'code',
-                    fontSize: '12px',
-                    color: 'primary',
-                    verticalAlign: 'top',
-                    whiteSpace: 'nowrap',
-                  })}>
-                    {name}
-                  </td>
-                  <td className={css({
-                    py: '1',
-                    fontFamily: 'code',
-                    fontSize: '12px',
-                    color: 'textPrimary',
-                    wordBreak: 'break-all',
-                  })}>
-                    {String(value)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          entries.map(([name, value]) => (
+            <div key={name} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 10px',
+              background: '#FAFAFE',
+              borderRadius: 8,
+              border: '1.5px solid #EEEDF8',
+            }}>
+              <span style={{ color: '#4F46E5', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700 }}>
+                {name}
+              </span>
+              <span style={{ color: '#C4B5FD', fontSize: 11 }}>=</span>
+              <span style={{ color: '#F59E0B', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, marginLeft: 'auto' }}>
+                {String(value)}
+              </span>
+            </div>
+          ))
         )}
       </div>
     </div>

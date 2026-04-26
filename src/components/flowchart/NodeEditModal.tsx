@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { css } from 'styled-system/css'
 import { useUiStore } from '../../stores/ui-store'
 import { useFlowchartStore } from '../../stores/flowchart-store'
 import type { FlowNodeType, FlowNodeData } from '../../types/flowchart'
@@ -67,72 +66,23 @@ export default function NodeEditModal() {
 
   return (
     <div
-      className={css({
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bg: 'rgba(0,0,0,0.6)',
-      })}
+      style={{ position: 'fixed', inset: 0, background: '#1A1A2E20', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
       onClick={handleCancel}
     >
       <div
-        className={css({
-          bg: 'bgPanel',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: '8px',
-          p: '6',
-          width: '320px',
-          fontFamily: 'ui',
-        })}
+        style={{ background: '#fff', border: '1.5px solid #E0DEFF', borderRadius: 16, padding: 24, minWidth: 320, boxShadow: '0 16px 48px #4F46E520' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className={css({ fontSize: '14px', fontWeight: 'bold', color: 'textPrimary', mb: '4' })}>
-          {LABELS[nodeType]}
-        </h3>
-
-        <form onSubmit={handleSubmit} className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
-          {nodeType === 'process' && (
-            <>
-              <Field label="변수명" value={varName} onChange={setVarName} placeholder="나이" autoFocus />
-              <Field label="값" value={varValue} onChange={setVarValue} placeholder="20" />
-            </>
-          )}
-          {nodeType === 'output' && (
-            <Field label="출력 내용" value={outputContent} onChange={setOutputContent} placeholder="안녕하세요" autoFocus />
-          )}
-          {nodeType === 'decision' && (
-            <Field label="조건식" value={condition} onChange={setCondition} placeholder="나이 >= 18" autoFocus />
-          )}
-          {nodeType === 'loop' && (
-            <Field label="반복 횟수" value={loopCount} onChange={setLoopCount} placeholder="10" type="number" autoFocus />
-          )}
-
-          <div className={css({ display: 'flex', gap: '2', justifyContent: 'flex-end', mt: '2' })}>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className={css({
-                px: '3', py: '1', fontSize: '12px', borderRadius: '4px',
-                border: '1px solid rgba(255,255,255,0.15)',
-                bg: 'transparent', color: 'textSecondary', cursor: 'pointer',
-              })}
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              className={css({
-                px: '3', py: '1', fontSize: '12px', borderRadius: '4px',
-                border: '1px solid',
-                borderColor: 'primary',
-                bg: 'transparent', color: 'primary', cursor: 'pointer',
-              })}
-            >
-              확인
-            </button>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E', marginBottom: 4 }}>노드 추가</div>
+        <div style={{ fontSize: 11, color: '#8B8B9E', marginBottom: 18 }}>{LABELS[nodeType]}</div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
+          {nodeType === 'process' && (<><Field label="변수 이름" value={varName} onChange={setVarName} placeholder="예: 나이" autoFocus /><Field label="값" value={varValue} onChange={setVarValue} placeholder="예: 15" /></>)}
+          {nodeType === 'output' && (<Field label="보여줄 내용" value={outputContent} onChange={setOutputContent} placeholder="예: 안녕하세요!" autoFocus />)}
+          {nodeType === 'decision' && (<Field label="조건식" value={condition} onChange={setCondition} placeholder="예: 나이 >= 14" autoFocus />)}
+          {nodeType === 'loop' && (<Field label="반복 횟수" value={loopCount} onChange={setLoopCount} placeholder="예: 5" type="number" autoFocus />)}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+            <button type="button" onClick={handleCancel} style={{ background: '#F3F2FA', color: '#6B6B8B', padding: '7px 18px', borderRadius: 99, border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Noto Sans KR', sans-serif" }}>취소</button>
+            <button type="submit" style={{ background: '#4F46E5', color: '#fff', padding: '7px 18px', borderRadius: 99, border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Noto Sans KR', sans-serif" }}>추가하기</button>
           </div>
         </form>
       </div>
@@ -151,26 +101,21 @@ function Field({
   autoFocus?: boolean
 }) {
   return (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-      <label className={css({ fontSize: '11px', color: 'textSecondary' })}>{label}</label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4B4B6B' }}>{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className={css({
-          bg: 'bgBase',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: '4px',
-          px: '3',
-          py: '2',
-          fontSize: '13px',
-          fontFamily: 'code',
-          color: 'textPrimary',
-          outline: 'none',
-          _focus: { borderColor: 'primary' },
-        })}
+        style={{
+          width: '100%', background: '#FAFAFE', border: '1.5px solid #EEEDF8',
+          color: '#1A1A2E', borderRadius: 9, padding: '8px 12px',
+          fontFamily: "'JetBrains Mono', monospace", fontSize: 12, outline: 'none',
+        }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = '#4F46E5' }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = '#EEEDF8' }}
       />
     </div>
   )
