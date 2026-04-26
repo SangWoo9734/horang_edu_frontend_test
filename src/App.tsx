@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { css } from 'styled-system/css'
 import Layout from './app/layout'
 import { useExecutionStore } from './stores/execution-store'
 import { useEditorStore } from './stores/editor-store'
 import { useUiStore } from './stores/ui-store'
 
+import { EXAMPLES } from './data/examples'
 import CodeEditor from './components/editor/CodeEditor'
 import FlowCanvas from './components/flowchart/FlowCanvas'
 import ConsolePanel from './components/panels/ConsolePanel'
@@ -96,8 +97,65 @@ function SyncBadge() {
   )
 }
 
+// ── 예제 드롭다운 ────────────────────────────
+function ExampleDropdown({ onSelect }: { onSelect: (code: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '5px 12px', borderRadius: 8,
+          border: '1px solid #EEEDF8', background: '#FAFAFE',
+          fontSize: 12, fontWeight: 500, color: '#4B4B6B',
+          cursor: 'pointer', transition: 'all .15s',
+        }}
+      >
+        예제 코드 {open ? '▴' : '▾'}
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          background: '#fff', border: '1.5px solid #EEEDF8',
+          borderRadius: 10, boxShadow: '0 8px 24px #4F46E510',
+          minWidth: 200, zIndex: 50, overflow: 'hidden',
+        }}>
+          {EXAMPLES.map((ex) => (
+            <div
+              key={ex.id}
+              onClick={() => { onSelect(ex.code); setOpen(false) }}
+              style={{
+                padding: '9px 14px', fontSize: 12, fontWeight: 500,
+                color: '#1A1A2E', cursor: 'pointer',
+                borderBottom: '1px solid #F3F2FA',
+                transition: 'background .1s',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#F3F2FA' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = '' }}
+            >
+              {ex.title}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── 탑 네비 ─────────────────────────────────
-function TopNav({ onHelp }: { onHelp: () => void }) {
+function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExample: (code: string) => void }) {
   const status = useExecutionStore((s) => s.status)
   const { executionDelay, setExecutionDelay } = useExecutionStore()
   const isRunning = status === 'running'
@@ -181,6 +239,8 @@ function TopNav({ onHelp }: { onHelp: () => void }) {
 
         <div style={{ width: 1, height: 20, background: '#EEEDF8', margin: '0 4px' }}/>
 
+        <ExampleDropdown onSelect={onSelectExample} />
+
         {/* 도움말 버튼 */}
         <button
           onClick={onHelp}
@@ -249,6 +309,11 @@ function SmallBtn({ onClick, children }: { onClick: () => void; children: React.
 export default function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const setCode = useEditorStore((s) => s.setCode)
+
+  const handleSelectExample = useCallback((code: string) => {
+    setCode(code)
+    editorInstanceRef.current?.setValue(code)
+  }, [setCode])
   const status = useExecutionStore((s) => s.status)
   const executingLine = useEditorStore((s) => s.executingLine)
   const code = useEditorStore((s) => s.code)
@@ -260,7 +325,7 @@ export default function App() {
   return (
     <>
     <Layout
-      topNav={<TopNav onHelp={() => setHelpOpen(true)}/>}
+      topNav={<TopNav onHelp={() => setHelpOpen(true)} onSelectExample={handleSelectExample}/>}
       syncBadge={<SyncBadge/>}
       mascot={<Mascot status={status} currentLine={currentLineText}/>}
       editor={
