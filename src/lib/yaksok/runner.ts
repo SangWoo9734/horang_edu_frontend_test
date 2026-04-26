@@ -7,7 +7,6 @@ import { findNodeIdByLine, findDisconnectedNodeIds } from '../flowchart/highligh
 
 let abortController: AbortController | null = null
 let currentSession: YaksokSession | null = null
-let cleanupTimer: ReturnType<typeof setTimeout> | null = null
 
 export async function startExecution(): Promise<void> {
   const { code } = useEditorStore.getState()
@@ -17,7 +16,6 @@ export async function startExecution(): Promise<void> {
   const { setExecutingLine } = useEditorStore.getState()
 
   clearRuntime()
-  if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
 
   // 실행 전: 미연결 노드 감지 및 표시
   const { nodes: currentNodes, edges: currentEdges, setNodes: setFlowNodes } = useFlowchartStore.getState()
@@ -66,14 +64,11 @@ export async function startExecution(): Promise<void> {
     }
   } finally {
     setExecutingLine(null)
+    setExecutingNodeId(null)
     currentSession = null
-    // 마지막 실행 노드가 렌더링될 수 있도록 다음 macrotask에서 정리
-    cleanupTimer = setTimeout(() => {
-      cleanupTimer = null
-      setExecutingNodeId(null)
-      const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
-      setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
-    }, 0)
+    // disconnected 플래그 초기화
+    const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
+    setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
   }
 }
 
