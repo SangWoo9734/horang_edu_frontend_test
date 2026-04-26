@@ -41,7 +41,7 @@ export async function startExecution(): Promise<void> {
         setExecutingNodeId(nodeId)
       },
       variableSet: ({ name, value }) => {
-        setVariable(name, value.toString())
+        setVariable(name, value.toPrint())
       },
     },
   })

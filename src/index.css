@@ -28,6 +28,15 @@
 .react-flow__controls-button:hover { background: #F3F2FA !important; color: #4F46E5 !important; }
 .react-flow__background { background: #FAFAFE !important; }
 
+/* 'output' 타입이 RF 빌트인 클래스와 겹쳐 기본 border/bg가 적용되는 문제 해결 */
+.react-flow__node-output {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  width: auto !important;
+  box-shadow: none !important;
+}
+
 /* 속도 슬라이더 */
 .speed-slider {
   -webkit-appearance: none;
