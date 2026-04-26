@@ -13,6 +13,8 @@ import {
   resumeExecution,
 } from './lib/yaksok/runner'
 import { editorInstanceRef } from './components/editor/editor-ref'
+import { EXAMPLES } from './data/examples'
+import { useUiStore } from './stores/ui-store'
 
 function Header() {
   const status = useExecutionStore((s) => s.status)
@@ -74,14 +76,16 @@ function Footer() {
 
 function ExampleDropdown() {
   const setCode = useEditorStore((s) => s.setCode)
+  const setLastEditSource = useUiStore((s) => s.setLastEditSource)
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
-    if (!value) return
-    // Phase 7에서 examples.ts 완성 후 연결 예정
-    const code = EXAMPLES[value] ?? ''
-    setCode(code)
-    editorInstanceRef.current?.setValue(code)
+    const id = e.target.value
+    if (!id) return
+    const example = EXAMPLES.find((ex) => ex.id === id)
+    if (!example) return
+    setLastEditSource('code')
+    setCode(example.code)
+    editorInstanceRef.current?.setValue(example.code)
     e.target.value = ''
   }
 
@@ -101,25 +105,11 @@ function ExampleDropdown() {
       })}
     >
       <option value="" disabled>예제 코드 ▾</option>
-      <option value="hello">기본 출력</option>
-      <option value="age-check">변수와 조건문</option>
-      <option value="sum-loop">반복문 합계</option>
+      {EXAMPLES.map((ex) => (
+        <option key={ex.id} value={ex.id}>{ex.title}</option>
+      ))}
     </select>
   )
-}
-
-// 임시 예제 (Phase 7에서 examples.ts로 이동)
-const EXAMPLES: Record<string, string> = {
-  'hello': '"안녕하세요!" 보여주기',
-  'age-check': `나이 = 20
-만약 나이 >= 18 이면
-\t"성인입니다" 보여주기
-아니면
-\t"미성년자입니다" 보여주기`,
-  'sum-loop': `합계 = 0
-반복 10번
-\t합계 = 합계 + 1
-합계 보여주기`,
 }
 
 const btnStyle = (disabled: boolean) =>
