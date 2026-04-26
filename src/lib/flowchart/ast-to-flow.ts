@@ -90,6 +90,10 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     addNode(ctx, id, {
       label: isOutput ? paramLabel : `${node.name}(${paramLabel})`,
       nodeType: isOutput ? 'output' : 'process',
+      processVariant: isOutput ? undefined : 'func-call',
+      outputContent: isOutput ? paramLabel : undefined,
+      funcCallName: isOutput ? undefined : node.name,
+      funcCallArgs: isOutput ? undefined : paramLabel,
       line: getLine(node),
       astNodeId: id,
     })
@@ -119,9 +123,12 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
 
   if (node instanceof CountLoop) {
     const id = uid(ctx)
+    const countLabel = tokenLabel(node.count)
     addNode(ctx, id, {
-      label: `${tokenLabel(node.count)}번 반복`,
+      label: `${countLabel}번 반복`,
       nodeType: 'loop',
+      loopVariant: 'count',
+      loopCount: Number(countLabel) || undefined,
       line: getLine(node),
       astNodeId: id,
     })
@@ -133,9 +140,12 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
 
   if (node instanceof ConditionalLoop) {
     const id = uid(ctx)
+    const cond = tokenLabel(node.condition)
     addNode(ctx, id, {
-      label: `${tokenLabel(node.condition)} 동안`,
+      label: `${cond} 동안`,
       nodeType: 'loop',
+      loopVariant: 'while',
+      loopCondition: cond,
       line: getLine(node),
       astNodeId: id,
     })
@@ -147,9 +157,13 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
 
   if (node instanceof ListLoop) {
     const id = uid(ctx)
+    const listLabel = tokenLabel(node.list)
     addNode(ctx, id, {
-      label: `${node.variableName}: ${tokenLabel(node.list)}`,
+      label: `${listLabel} 의 ${node.variableName}`,
       nodeType: 'loop',
+      loopVariant: 'list',
+      listVar: listLabel,
+      itemVar: node.variableName,
       line: getLine(node),
       astNodeId: id,
     })
@@ -162,12 +176,16 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
   if (node instanceof DeclareFunction) {
     const id = uid(ctx)
     addNode(ctx, id, {
-      label: node.name,
+      label: `약속: ${node.name}`,
       nodeType: 'function',
+      funcName: node.name,
       line: getLine(node),
       astNodeId: id,
     })
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
+    // 함수 본문도 전개
+    const bodyTails = convertBlock(node.body, [id], ctx)
+    for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
     return [id]
   }
 

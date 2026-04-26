@@ -174,13 +174,15 @@ function FlowCanvasInner() {
       const nodeType = e.dataTransfer.getData('nodeType') as FlowNodeType
       if (!nodeType) return
 
+      const loopVariant = (e.dataTransfer.getData('loopVariant') || undefined) as import('../../types/flowchart').LoopVariant | undefined
+      const processVariant = (e.dataTransfer.getData('processVariant') || undefined) as import('../../types/flowchart').ProcessVariant | undefined
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       const id = `user-${Date.now()}`
-      const newNode = {
+      const newNode: (typeof nodes)[0] = {
         id,
         type: nodeType,
         position,
-        data: { label: '...', nodeType },
+        data: { label: '...', nodeType, loopVariant, processVariant },
       }
       setNodes([...nodes, newNode])
       openModal(id)

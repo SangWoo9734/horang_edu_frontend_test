@@ -51,24 +51,43 @@ function findMergeNode(
 
 function nodeToCodeLine(node: FlowNode, depth: number): string {
   const indent = '\t'.repeat(depth)
-  const { nodeType, label, varName, varValue, condition, outputContent, loopCount } = node.data
+  const d = node.data
 
-  if (nodeType === 'process') {
-    // 사용자 입력값 우선, 없으면 label에서 그대로 사용
-    const line = varName != null ? `${varName} = ${varValue ?? ''}` : label
-    return `${indent}${line}`
+  if (d.nodeType === 'process') {
+    if (d.processVariant === 'func-call') {
+      const args = d.funcCallArgs ? ` ${d.funcCallArgs}` : ''
+      return `${indent}${d.funcCallName ?? d.label}${args}`
+    }
+    // 변수 할당 (assign)
+    return `${indent}${d.varName != null ? `${d.varName} = ${d.varValue ?? ''}` : d.label}`
   }
-  if (nodeType === 'output') {
-    const content = outputContent != null ? outputContent : label
-    return `${indent}"${content}" 보여주기`
+  if (d.nodeType === 'output') {
+    const content = d.outputContent != null ? d.outputContent : d.label
+    // 따옴표 이미 포함된 경우 그대로, 아니면 감싸기
+    const quoted = content.startsWith('"') ? content : `"${content}"`
+    return `${indent}${quoted} 보여주기`
   }
-  if (nodeType === 'decision') {
-    const cond = condition != null ? condition : label
+  if (d.nodeType === 'decision') {
+    const cond = d.condition != null ? d.condition : d.label
     return `${indent}만약 ${cond} 이면`
   }
-  if (nodeType === 'loop') {
-    const count = loopCount != null ? loopCount : label.replace(/번 반복$/, '').trim()
+  if (d.nodeType === 'loop') {
+    const variant = d.loopVariant ?? 'count'
+    if (variant === 'while') {
+      const cond = d.loopCondition ?? d.label.replace(/ 동안$/, '').trim()
+      return `${indent}반복 ${cond} 동안`
+    }
+    if (variant === 'list') {
+      return `${indent}반복 ${d.listVar ?? '목록'} 의 ${d.itemVar ?? '항목'} 마다`
+    }
+    // count (기본)
+    const count = d.loopCount != null ? d.loopCount : d.label.replace(/번 반복$/, '').trim()
     return `${indent}반복 ${count}번`
+  }
+  if (d.nodeType === 'function') {
+    const name = d.funcName ?? d.label.replace(/^약속: /, '')
+    const params = d.funcParams ? `, (${d.funcParams})` : ''
+    return `${indent}약속,${params} ${name}`
   }
   return ''
 }
@@ -126,6 +145,14 @@ function generateBlock(
       if (bodyEdge) {
         lines.push(...generateBlock(bodyEdge.target, outgoing, incoming, nodeMap, depth + 1, new Set(visited), new Set([...stopIds, currentId])))
       }
+    } else if (nodeType === 'function') {
+      lines.push(nodeToCodeLine(node, depth))
+
+      const bodyEdge = outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
+      if (bodyEdge) {
+        lines.push(...generateBlock(bodyEdge.target, outgoing, incoming, nodeMap, depth + 1, new Set(visited), new Set([...stopIds, currentId])))
+      }
+      lines.push('') // 함수 선언 뒤 빈 줄
     }
 
     // 다음 순차 엣지 탐색 (true/false/back 제외)
