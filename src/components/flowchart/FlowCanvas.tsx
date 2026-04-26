@@ -141,6 +141,19 @@ function FlowCanvasInner() {
     [edges, nodes, setEdges, triggerF2C],
   )
 
+  // 노드 클릭 → 에디터 해당 줄로 이동
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: { id: string; data: unknown }) => {
+      const data = node.data as { line?: number }
+      if (data.line == null) return
+      const editor = editorInstanceRef.current
+      if (!editor) return
+      editor.revealLineInCenter(data.line)
+      editor.setPosition({ lineNumber: data.line, column: 1 })
+    },
+    [],
+  )
+
   // 노드 더블클릭 → 수정 모달
   const onNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
@@ -188,6 +201,7 @@ function FlowCanvasInner() {
         onConnect={onConnect}
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}
+        onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
         onDragOver={onDragOver}
         onDrop={onDrop}
