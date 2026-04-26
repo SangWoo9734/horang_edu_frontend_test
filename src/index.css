@@ -27,3 +27,38 @@
 }
 .react-flow__controls-button:hover { background: #F3F2FA !important; color: #4F46E5 !important; }
 .react-flow__background { background: #FAFAFE !important; }
+
+/* 속도 슬라이더 */
+.speed-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 4px;
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    #4F46E5 var(--pct, 50%),
+    #E0DEFF var(--pct, 50%)
+  );
+}
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4F46E5;
+  border: 2px solid #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px #4F46E540;
+}
+.speed-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4F46E5;
+  border: 2px solid #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px #4F46E540;
+}

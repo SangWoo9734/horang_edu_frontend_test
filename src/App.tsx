@@ -107,11 +107,8 @@ function TopNav({ activeNav, onNavChange, onHelp }: { activeNav: string; onNavCh
             type="range" min={0} max={2000} step={100}
             value={executionDelay}
             onChange={(e) => setExecutionDelay(Number(e.target.value))}
-            style={{
-              WebkitAppearance: 'none', width: 88, height: 4,
-              background: `linear-gradient(to right, #4F46E5 ${speedPct}%, #E0DEFF ${speedPct}%)`,
-              borderRadius: 99, outline: 'none', cursor: 'pointer',
-            } as React.CSSProperties}
+            className="speed-slider"
+            style={{ '--pct': `${speedPct}%` } as React.CSSProperties}
           />
         </div>
 
