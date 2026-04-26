@@ -6,6 +6,28 @@ interface MascotProps {
   currentLine?: string
 }
 
+const S = {
+  root: css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3',
+    px: '1',
+  }),
+  avatar: css({ flexShrink: '0' }),
+  bubble: css({
+    bg: 'bgActive',
+    borderRadius: '12px 12px 12px 2px',
+    px: '3',
+    py: '2',
+    fontSize: '12px',
+    color: 'textMid',
+    fontWeight: '500',
+    border: '1.5px solid',
+    borderColor: 'accent',
+    lineHeight: '1.5',
+  }),
+}
+
 export default function Mascot({ status, currentLine }: MascotProps) {
   let msg = ''
   if (status === 'idle') msg = '코드를 쓰고 <b>▶ 실행하기</b>를 눌러봐요!'
@@ -16,14 +38,8 @@ export default function Mascot({ status, currentLine }: MascotProps) {
   else if (status === 'error') msg = '❗ 오류가 생겼어요. 코드를 다시 확인해봐요!'
 
   return (
-    <div className={css({
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3',
-      px: '1',
-    })}>
-      {/* 보라 호랑이 마스코트 */}
-      <svg width="42" height="42" viewBox="0 0 42 42" fill="none" style={{ flexShrink: 0 }}>
+    <div className={S.root}>
+      <svg width="42" height="42" viewBox="0 0 42 42" fill="none" className={S.avatar}>
         <ellipse cx="21" cy="26" rx="13" ry="12" fill="#C4B5FD"/>
         <ellipse cx="21" cy="22" rx="11" ry="11" fill="#A78BFA"/>
         <ellipse cx="17" cy="19" rx="3" ry="4" fill="#7C3AED"/>
@@ -40,21 +56,7 @@ export default function Mascot({ status, currentLine }: MascotProps) {
         <line x1="28" y1="25" x2="34" y2="27" stroke="#7C3AED" strokeWidth="1"/>
       </svg>
 
-      <div
-        className={css({
-          bg: 'bgActive',
-          borderRadius: '12px 12px 12px 2px',
-          px: '3',
-          py: '2',
-          fontSize: '12px',
-          color: 'textMid',
-          fontWeight: '500',
-          border: '1.5px solid',
-          borderColor: 'accent',
-          lineHeight: '1.5',
-        })}
-        dangerouslySetInnerHTML={{ __html: msg }}
-      />
+      <div className={S.bubble} dangerouslySetInnerHTML={{ __html: msg }} />
     </div>
   )
 }
