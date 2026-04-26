@@ -34,7 +34,7 @@ import { useUiStore } from '../../stores/ui-store'
 import { parseAndConvert } from '../../lib/flowchart/ast-to-flow'
 import { applyLayout } from '../../lib/flowchart/layout'
 import { flowToCode } from '../../lib/flowchart/flow-to-code'
-import { editorInstanceRef } from '../editor/editor-ref'
+import { editorInstanceRef, isProgrammaticUpdate } from '../editor/editor-ref'
 import { SYNC_DEBOUNCE_MS } from '../../lib/flowchart/sync'
 import type { FlowNodeType } from '../../types/flowchart'
 
@@ -89,9 +89,11 @@ function FlowCanvasInner() {
   const triggerF2C = useCallback((nextNodes = nodes, nextEdges = edges) => {
     const generated = flowToCode(nextNodes, nextEdges)
     if (!generated) return
-    setLastEditSource('flowchart')  // onChange에서 lastEditSource 변경 차단
+    setLastEditSource('flowchart')
+    isProgrammaticUpdate.current = true
+    editorInstanceRef.current?.setValue(generated)  // onChange 동기 발생 → flag가 막음
+    isProgrammaticUpdate.current = false
     setCode(generated)
-    editorInstanceRef.current?.setValue(generated)
   }, [nodes, edges, setCode, setLastEditSource])
 
   const onNodesChange: OnNodesChange = useCallback(

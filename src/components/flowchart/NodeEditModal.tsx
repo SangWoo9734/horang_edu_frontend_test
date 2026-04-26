@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useUiStore } from '../../stores/ui-store'
 import { useFlowchartStore } from '../../stores/flowchart-store'
+import { useEditorStore } from '../../stores/editor-store'
+import { editorInstanceRef, isProgrammaticUpdate } from '../editor/editor-ref'
+import { flowToCode } from '../../lib/flowchart/flow-to-code'
 import type { FlowNodeData, LoopVariant, ProcessVariant } from '../../types/flowchart'
 
 // ── 레이블 생성 ─────────────────────────────
@@ -215,9 +218,22 @@ export default function NodeEditModal() {
     e.preventDefault()
     const errs = validate()
     setErrors(errs)
-    if (Object.values(errs).some(Boolean)) return   // 에러 있으면 중단
+    if (Object.values(errs).some(Boolean)) return
+
     const data = buildData()
     updateNode(node.id, { ...data, label: buildLabel({ nodeType, loopVariant, processVariant, ...data }) })
+
+    // updateNode는 동기 → 바로 최신 상태로 F2C 실행
+    const { nodes: currentNodes, edges: currentEdges } = useFlowchartStore.getState()
+    const generated = flowToCode(currentNodes, currentEdges)
+    if (generated) {
+      useUiStore.getState().setLastEditSource('flowchart')
+      isProgrammaticUpdate.current = true
+      editorInstanceRef.current?.setValue(generated)
+      isProgrammaticUpdate.current = false
+      useEditorStore.getState().setCode(generated)
+    }
+
     closeModal()
   }
 

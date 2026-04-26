@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react'
 import * as monaco from 'monaco-editor'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
-import { editorInstanceRef } from './editor-ref'
+import { editorInstanceRef, isProgrammaticUpdate } from './editor-ref'
 import { validateCode } from '../../lib/yaksok/validator'
 import { SYNC_DEBOUNCE_MS } from '../../lib/flowchart/sync'
 
@@ -87,11 +87,9 @@ export default function CodeEditor() {
 
     editorInstance.onDidChangeModelContent(() => {
       const newCode = editorInstance.getValue()
-      const { lastEditSource, setLastEditSource } = useUiStore.getState()
-
-      // 순서도 편집으로 setValue가 호출된 경우 lastEditSource 변경 안 함
-      if (lastEditSource !== 'flowchart') {
-        setLastEditSource('code')
+      // programmatic setValue(F2C)가 아닐 때만 lastEditSource를 'code'로 전환
+      if (!isProgrammaticUpdate.current) {
+        useUiStore.getState().setLastEditSource('code')
       }
       setCode(newCode)
     })
