@@ -75,7 +75,7 @@ export async function startExecution(): Promise<void> {
       setExecutingNodeId(null)
       const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
       setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
-    }, 0)
+    }, executionDelay)
   }
 }
 

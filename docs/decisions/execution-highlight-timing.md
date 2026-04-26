@@ -120,20 +120,41 @@ const executing = useFlowchartStore(s => s.executingNodeId === props.id)
 - **기각 이유**: `runningCode` 이벤트가 "지금 이 줄이 실행 중"이라는 유일한 동기화 지점.  
   이를 사용하지 않으면 더 복잡한 동기화 메커니즘이 필요하고 정확도도 떨어짐.
 
+### ⑤ `pnpm patch`로 라이브러리 `base.ts` 수정
+
+라이브러리 `node/base.ts`의 `onRunChild`에서 delay 위치를 reporting 앞에서 뒤로 이동:
+
+```typescript
+// 현재 (라이브러리)
+await delay()
+reportRunningCode(tokens)  ← setExecutingNodeId
+await child.execute()
+
+// 패치 후
+reportRunningCode(tokens)  ← setExecutingNodeId
+await child.execute()
+await delay()              ← 실행 후 delay → 브라우저 페인트 기회
+```
+
+- **장점**: 가장 근본적인 해결. 모든 노드가 동일한 메커니즘으로 처리되고, 우리 코드에 setTimeout 불필요.
+- **성능 차이**: 노드당 총 소요 시간은 `delay + execute`로 동일. 차이 없음.
+- **기각 이유**: 라이브러리 업데이트마다 패치를 재적용해야 하는 유지보수 비용.  
+  반면 현재 방식(setTimeout in runner.ts)은 우리 코드에만 있어 라이브러리 업데이트에 영향받지 않음.
+
 ---
 
-## 최종 결정: `setTimeout(0)` 채택 ✅
+## 최종 결정: `setTimeout(executionDelay)` 채택 ✅
 
 | 항목 | 내용 |
 |------|------|
 | 적용 위치 | `src/lib/yaksok/runner.ts` — `finally` 블록 |
-| 이유 | 브라우저 페인트 모델상 macrotask 경계가 유일한 해법. flushSync 검증 후 기각. |
-| 트레이드오프 | macrotask 경계가 목적인 setTimeout 사용 — 의도를 주석으로 명시하여 유지보수성 확보 |
+| 이유 | 브라우저 페인트 모델상 macrotask 경계가 유일한 해법. 라이브러리 패치 대비 유지보수 비용 없음. |
+| delay 값 | `executionDelay` — 다른 노드와 동일한 하이라이트 지속 시간 |
 | race condition 방지 | `cleanupTimer`로 새 실행 시작 시 이전 타이머를 취소 |
 
 ### 채택 이유 상세
 
-- 모든 대안(`flushSync`, 직접 구독, 별도 컨텍스트)이 macrotask 경계 없이는 근본 원인을 해결하지 못함을 확인
-- executionDelay가 이미 같은 원리(setTimeout으로 macrotask 경계 생성)를 사용하고 있어 일관성이 있음  
-  단, executionDelay는 "지연"이 목적이고 이것은 "macrotask 경계"가 목적이라는 차이가 있음
-- 이 패턴이 확산되지 않도록 사용처를 이 한 곳으로 한정하고, 이유를 코드 주석과 이 문서에 명시함
+- 모든 대안(`flushSync`, 직접 구독, 별도 컨텍스트)이 macrotask 경계 없이는 근본 원인을 해결하지 못함을 검증
+- 라이브러리 패치(⑤)가 가장 근본적이지만, 업데이트마다 재적용 필요 — 유지보수 비용 대비 이득이 크지 않음
+- `setTimeout(executionDelay)`는 우리 코드에만 존재하며 라이브러리 업데이트에 영향받지 않음
+- 이 패턴이 확산되지 않도록 사용처를 이 한 곳으로 한정하고, 의도를 코드 주석과 이 문서에 명시함
