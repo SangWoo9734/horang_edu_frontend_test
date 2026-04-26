@@ -34,7 +34,7 @@ import { useUiStore } from '../../stores/ui-store'
 import { parseAndConvert } from '../../lib/flowchart/ast-to-flow'
 import { applyLayout } from '../../lib/flowchart/layout'
 import { flowToCode } from '../../lib/flowchart/flow-to-code'
-import { editorInstanceRef, isProgrammaticUpdate } from '../editor/editor-ref'
+import { editorInstanceRef, isProgrammaticUpdateRef } from '../editor/editor-ref'
 import { SYNC_DEBOUNCE_MS } from '../../lib/flowchart/sync'
 import type { FlowNodeType } from '../../types/flowchart'
 
@@ -94,9 +94,9 @@ function FlowCanvasInner() {
     const generated = flowToCode(nextNodes, nextEdges)
     if (!generated) return
     setLastEditSource('flowchart')
-    isProgrammaticUpdate.current = true
+    isProgrammaticUpdateRef.current = true
     editorInstanceRef.current?.setValue(generated)  // onChange 동기 발생 → flag가 막음
-    isProgrammaticUpdate.current = false
+    isProgrammaticUpdateRef.current = false
     setCode(generated)
   }, [nodes, edges, setCode, setLastEditSource])
 

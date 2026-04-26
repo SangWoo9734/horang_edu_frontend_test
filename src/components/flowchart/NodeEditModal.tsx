@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useReducer } from 'react'
 import { useUiStore } from '../../stores/ui-store'
 import { useFlowchartStore } from '../../stores/flowchart-store'
 import { useEditorStore } from '../../stores/editor-store'
-import { editorInstanceRef, isProgrammaticUpdate } from '../editor/editor-ref'
+import { editorInstanceRef, isProgrammaticUpdateRef } from '../editor/editor-ref'
 import { flowToCode } from '../../lib/flowchart/flow-to-code'
 import type { FlowNodeData, LoopVariant, ProcessVariant } from '../../types/flowchart'
 
@@ -115,6 +115,25 @@ function CodePreview({ code }: { code: string }) {
   )
 }
 
+// ── 폼 상태 (useReducer) ─────────────────────
+type FormState = {
+  varName: string; varValue: string; condition: string
+  outputContent: string; outputType: 'string' | 'expr'
+  loopCount: string; loopCondition: string; listVar: string; itemVar: string
+  funcName: string; funcParams: string; funcCallName: string; funcCallArgs: string
+}
+
+const FORM_INIT: FormState = {
+  varName: '', varValue: '', condition: '',
+  outputContent: '', outputType: 'string',
+  loopCount: '5', loopCondition: '', listVar: '', itemVar: '',
+  funcName: '', funcParams: '', funcCallName: '', funcCallArgs: '',
+}
+
+function formReducer(state: FormState, patch: Partial<FormState>): FormState {
+  return { ...state, ...patch }
+}
+
 // ── 메인 모달 ────────────────────────────────
 export default function NodeEditModal() {
   const { modalOpen, modalNodeId, closeModal } = useUiStore()
@@ -125,41 +144,39 @@ export default function NodeEditModal() {
   const loopVariant: LoopVariant = (node?.data.loopVariant as LoopVariant) ?? 'count'
   const processVariant: ProcessVariant = (node?.data.processVariant as ProcessVariant) ?? 'assign'
 
-  // 폼 상태
-  const [varName, setVarName] = useState('')
-  const [varValue, setVarValue] = useState('')
-  const [condition, setCondition] = useState('')
-  const [outputContent, setOutputContent] = useState('')
-  const [loopCount, setLoopCount] = useState('5')
-  const [loopCondition, setLoopCondition] = useState('')
-  const [listVar, setListVar] = useState('')
-  const [itemVar, setItemVar] = useState('')
-  const [funcName, setFuncName] = useState('')
-  const [funcParams, setFuncParams] = useState('')
-  const [funcCallName, setFuncCallName] = useState('')
-  const [funcCallArgs, setFuncCallArgs] = useState('')
-  // 에러 상태 (필드명 → 메시지)
+  const [form, dispatch] = useReducer(formReducer, FORM_INIT)
   const [errors, setErrors] = useState<Record<string, string | null>>({})
 
-  // 기존 노드 수정 시 pre-fill
+  // 기존 노드 수정 시 pre-fill — 한 번의 dispatch로 모든 필드 초기화
   useEffect(() => {
     if (!node) return
     const d = node.data
-    setVarName(String(d.varName ?? ''))
-    setVarValue(String(d.varValue ?? ''))
-    setCondition(String(d.condition ?? ''))
-    setOutputContent(String(d.outputContent ?? ''))
-    setLoopCount(String(d.loopCount ?? '5'))
-    setLoopCondition(String(d.loopCondition ?? ''))
-    setListVar(String(d.listVar ?? ''))
-    setItemVar(String(d.itemVar ?? ''))
-    setFuncName(String(d.funcName ?? ''))
-    setFuncParams(String(d.funcParams ?? ''))
-    setFuncCallName(String(d.funcCallName ?? ''))
-    setFuncCallArgs(String(d.funcCallArgs ?? ''))
+    dispatch({
+      varName: String(d.varName ?? ''),
+      varValue: String(d.varValue ?? ''),
+      condition: String(d.condition ?? ''),
+      outputContent: String(d.outputContent ?? ''),
+      outputType: (d.outputType as 'string' | 'expr') ?? 'string',
+      loopCount: String(d.loopCount ?? '5'),
+      loopCondition: String(d.loopCondition ?? ''),
+      listVar: String(d.listVar ?? ''),
+      itemVar: String(d.itemVar ?? ''),
+      funcName: String(d.funcName ?? ''),
+      funcParams: String(d.funcParams ?? ''),
+      funcCallName: String(d.funcCallName ?? ''),
+      funcCallArgs: String(d.funcCallArgs ?? ''),
+    })
   }, [modalNodeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!modalOpen || !node) return null
+
+  const { varName, varValue, condition, outputContent, outputType,
+    loopCount, loopCondition, listVar, itemVar,
+    funcName, funcParams, funcCallName, funcCallArgs } = form
+
+  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    dispatch({ [key]: value } as Partial<FormState>)
+  }
 
   // 현재 입력값으로 데이터 조합
   function buildData(): Partial<FlowNodeData> {
@@ -169,7 +186,7 @@ export default function NodeEditModal() {
     if (nodeType === 'process') {
       return { varName, varValue, processVariant: 'assign' }
     }
-    if (nodeType === 'output') return { outputContent }
+    if (nodeType === 'output') return { outputContent, outputType }
     if (nodeType === 'decision') return { condition }
     if (nodeType === 'loop') {
       if (loopVariant === 'while') return { loopCondition, loopVariant: 'while' }
@@ -181,7 +198,14 @@ export default function NodeEditModal() {
   }
 
   const previewData = { nodeType, loopVariant, processVariant, ...buildData() }
-  const preview = buildLabel(previewData)
+  const preview = (() => {
+    if (nodeType === 'output') {
+      const c = outputContent
+      const isExpr = outputType === 'expr' || c.startsWith('"')
+      return c ? `${isExpr ? c : `"${c}"`} 보여주기` : ''
+    }
+    return buildLabel(previewData)
+  })()
 
   function validate(): Record<string, string | null> {
     const e: Record<string, string | null> = {}
@@ -228,9 +252,11 @@ export default function NodeEditModal() {
     const generated = flowToCode(currentNodes, currentEdges)
     if (generated) {
       useUiStore.getState().setLastEditSource('flowchart')
-      isProgrammaticUpdate.current = true
+      // eslint-disable-next-line react-hooks/immutability
+      isProgrammaticUpdateRef.current = true
       editorInstanceRef.current?.setValue(generated)
-      isProgrammaticUpdate.current = false
+      // eslint-disable-next-line react-hooks/immutability
+      isProgrammaticUpdateRef.current = false
       useEditorStore.getState().setCode(generated)
     }
 
@@ -259,52 +285,80 @@ export default function NodeEditModal() {
           {/* 변수 할당 */}
           {nodeType === 'process' && processVariant !== 'func-call' && (
             <>
-              <Field label="변수 이름" value={varName} onChange={(v) => { setVarName(v); setErrors(p => ({ ...p, varName: null })) }} placeholder="나이" autoFocus hint="예: 나이, 합계" error={errors.varName} />
-              <Field label="값" value={varValue} onChange={(v) => { setVarValue(v); setErrors(p => ({ ...p, varValue: null })) }} placeholder="20" hint="숫자, 문자열, 식" error={errors.varValue} />
+              <Field label="변수 이름" value={varName} onChange={(v) => { setField('varName', v); setErrors(p => ({ ...p, varName: null })) }} placeholder="나이" autoFocus hint="예: 나이, 합계" error={errors.varName} />
+              <Field label="값" value={varValue} onChange={(v) => { setField('varValue', v); setErrors(p => ({ ...p, varValue: null })) }} placeholder="20" hint="숫자, 문자열, 식" error={errors.varValue} />
             </>
           )}
 
           {/* 함수 호출 */}
           {nodeType === 'process' && processVariant === 'func-call' && (
             <>
-              <Field label="함수 이름" value={funcCallName} onChange={(v) => { setFuncCallName(v); setErrors(p => ({ ...p, funcCallName: null })) }} placeholder="인사하기" autoFocus error={errors.funcCallName} />
-              <Field label="인자 (선택)" value={funcCallArgs} onChange={setFuncCallArgs} placeholder='"철수" 에게' hint='공백 구분' />
+              <Field label="함수 이름" value={funcCallName} onChange={(v) => { setField('funcCallName', v); setErrors(p => ({ ...p, funcCallName: null })) }} placeholder="인사하기" autoFocus error={errors.funcCallName} />
+              <Field label="인자 (선택)" value={funcCallArgs} onChange={(v) => setField('funcCallArgs', v)} placeholder='"철수" 에게' hint='공백 구분' />
             </>
           )}
 
           {/* 출력 */}
           {nodeType === 'output' && (
-            <Field label="출력 내용" value={outputContent} onChange={(v) => { setOutputContent(v); setErrors(p => ({ ...p, outputContent: null })) }} placeholder="안녕하세요!" autoFocus hint='따옴표 불필요' error={errors.outputContent} />
+            <>
+              <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                {(['string', 'expr'] as const).map((t) => (
+                  <button
+                    key={t} type="button"
+                    onClick={() => setField('outputType', t)}
+                    style={{
+                      flex: 1, padding: '6px 0', borderRadius: 8, cursor: 'pointer',
+                      fontSize: 11, fontWeight: 600,
+                      border: `1.5px solid ${outputType === t ? '#4F46E5' : '#EEEDF8'}`,
+                      background: outputType === t ? '#EEF0FF' : '#FAFAFE',
+                      color: outputType === t ? '#4F46E5' : '#8B8B9E',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {t === 'string' ? '📝 문자열' : '📦 변수 / 식'}
+                  </button>
+                ))}
+              </div>
+              <Field
+                label="출력 내용"
+                value={outputContent}
+                onChange={(v) => { setField('outputContent', v); setErrors(p => ({ ...p, outputContent: null })) }}
+                placeholder={outputType === 'string' ? '안녕하세요!' : '합계'}
+                autoFocus
+                hint={outputType === 'string' ? '텍스트를 그대로 출력' : '변수명 또는 식을 입력'}
+                error={errors.outputContent}
+              />
+            </>
           )}
 
           {/* 조건문 */}
           {nodeType === 'decision' && (
-            <Field label="조건식" value={condition} onChange={(v) => { setCondition(v); setErrors(p => ({ ...p, condition: null })) }} placeholder="나이 >= 14" autoFocus hint='비교 연산자 사용' error={errors.condition} />
+            <Field label="조건식" value={condition} onChange={(v) => { setField('condition', v); setErrors(p => ({ ...p, condition: null })) }} placeholder="나이 >= 14" autoFocus hint='비교 연산자 사용' error={errors.condition} />
           )}
 
           {/* 횟수 반복 */}
           {nodeType === 'loop' && loopVariant === 'count' && (
-            <Field label="반복 횟수" value={loopCount} onChange={(v) => { setLoopCount(v); setErrors(p => ({ ...p, loopCount: null })) }} placeholder="5" type="number" autoFocus hint='정수 입력' error={errors.loopCount} />
+            <Field label="반복 횟수" value={loopCount} onChange={(v) => { setField('loopCount', v); setErrors(p => ({ ...p, loopCount: null })) }} placeholder="5" type="number" autoFocus hint='정수 입력' error={errors.loopCount} />
           )}
 
           {/* 조건 반복 */}
           {nodeType === 'loop' && loopVariant === 'while' && (
-            <Field label="반복 조건" value={loopCondition} onChange={(v) => { setLoopCondition(v); setErrors(p => ({ ...p, loopCondition: null })) }} placeholder="카운트 < 10" autoFocus hint='참인 동안 반복' error={errors.loopCondition} />
+            <Field label="반복 조건" value={loopCondition} onChange={(v) => { setField('loopCondition', v); setErrors(p => ({ ...p, loopCondition: null })) }} placeholder="카운트 < 10" autoFocus hint='참인 동안 반복' error={errors.loopCondition} />
           )}
 
           {/* 목록 반복 */}
           {nodeType === 'loop' && loopVariant === 'list' && (
             <>
-              <Field label="목록 변수" value={listVar} onChange={(v) => { setListVar(v); setErrors(p => ({ ...p, listVar: null })) }} placeholder="과일들" autoFocus hint='리스트 변수명' error={errors.listVar} />
-              <Field label="항목 변수" value={itemVar} onChange={(v) => { setItemVar(v); setErrors(p => ({ ...p, itemVar: null })) }} placeholder="과일" hint='각 항목을 담을 변수명' error={errors.itemVar} />
+              <Field label="목록 변수" value={listVar} onChange={(v) => { setField('listVar', v); setErrors(p => ({ ...p, listVar: null })) }} placeholder="과일들" autoFocus hint='리스트 변수명' error={errors.listVar} />
+              <Field label="항목 변수" value={itemVar} onChange={(v) => { setField('itemVar', v); setErrors(p => ({ ...p, itemVar: null })) }} placeholder="과일" hint='각 항목을 담을 변수명' error={errors.itemVar} />
             </>
           )}
 
           {/* 함수 선언 */}
           {nodeType === 'function' && (
             <>
-              <Field label="함수 이름" value={funcName} onChange={(v) => { setFuncName(v); setErrors(p => ({ ...p, funcName: null })) }} placeholder="인사하기" autoFocus error={errors.funcName} />
-              <Field label="매개변수 (선택)" value={funcParams} onChange={setFuncParams} placeholder="(이름)" hint='예: (A), (B)' />
+              <Field label="함수 이름" value={funcName} onChange={(v) => { setField('funcName', v); setErrors(p => ({ ...p, funcName: null })) }} placeholder="인사하기" autoFocus error={errors.funcName} />
+              <Field label="매개변수 (선택)" value={funcParams} onChange={(v) => setField('funcParams', v)} placeholder="(이름)" hint='예: (A), (B)' />
             </>
           )}
 

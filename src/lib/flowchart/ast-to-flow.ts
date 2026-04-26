@@ -25,7 +25,7 @@ interface Ctx {
 
 interface EdgeOpts {
   label?: string
-  edgeType?: 'true' | 'false' | 'back'
+  edgeType?: 'true' | 'false' | 'back' | 'body'
 }
 
 function uid(ctx: Ctx): string {
@@ -87,11 +87,15 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     const id = uid(ctx)
     const isOutput = node.name === '보여주기'
     const paramLabel = Object.values(node.params).map((p) => tokenLabel(p)).join(', ')
+    const outputType = isOutput
+      ? (paramLabel.startsWith('"') ? 'string' : 'expr') as 'string' | 'expr'
+      : undefined
     addNode(ctx, id, {
       label: isOutput ? paramLabel : `${node.name}(${paramLabel})`,
       nodeType: isOutput ? 'output' : 'process',
       processVariant: isOutput ? undefined : 'func-call',
       outputContent: isOutput ? paramLabel : undefined,
+      outputType,
       funcCallName: isOutput ? undefined : node.name,
       funcCallArgs: isOutput ? undefined : paramLabel,
       line: getLine(node),
@@ -133,7 +137,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
       astNodeId: id,
     })
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
-    const bodyTails = convertBlock(node.body, [id], ctx)
+    const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
     return [id]
   }
@@ -150,7 +154,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
       astNodeId: id,
     })
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
-    const bodyTails = convertBlock(node.body, [id], ctx)
+    const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
     return [id]
   }
@@ -168,7 +172,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
       astNodeId: id,
     })
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
-    const bodyTails = convertBlock(node.body, [id], ctx)
+    const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
     return [id]
   }
@@ -184,7 +188,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     })
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
     // 함수 본문도 전개
-    const bodyTails = convertBlock(node.body, [id], ctx)
+    const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
     return [id]
   }
@@ -201,10 +205,32 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     return [id]
   }
 
+  // 토큰에 '보여주기' 포함 → FunctionInvoke instanceof 실패 시 fallback
+  const rawTokens = node.tokens.map((t) => t.value)
+  if (rawTokens.includes('보여주기')) {
+    const id = uid(ctx)
+    const content = rawTokens.filter((v) => v !== '보여주기').join(' ').trim()
+    const outputType = content.startsWith('"') ? 'string' : 'expr'
+    addNode(ctx, id, {
+      label: content || '보여주기',
+      nodeType: 'output',
+      outputContent: content || '보여주기',
+      outputType,
+      line: getLine(node),
+      astNodeId: id,
+    })
+    for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
+    return [id]
+  }
+
+  // 빈 레이블(phantom "?" 노드) 건너뜀
+  const label = rawTokens.join(' ').trim()
+  if (!label) return fromIds
+
   // 알 수 없는 노드 — 제네릭 process 노드로 표시
   const id = uid(ctx)
   addNode(ctx, id, {
-    label: tokenLabel(node),
+    label,
     nodeType: 'process',
     line: getLine(node),
     astNodeId: id,

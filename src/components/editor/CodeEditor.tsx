@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react'
 import * as monaco from 'monaco-editor'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
-import { editorInstanceRef, isProgrammaticUpdate } from './editor-ref'
+import { editorInstanceRef, isProgrammaticUpdateRef } from './editor-ref'
 import { validateCode } from '../../lib/yaksok/validator'
 import { SYNC_DEBOUNCE_MS } from '../../lib/flowchart/sync'
 
@@ -88,7 +88,7 @@ export default function CodeEditor() {
     editorInstance.onDidChangeModelContent(() => {
       const newCode = editorInstance.getValue()
       // programmatic setValue(F2C)가 아닐 때만 lastEditSource를 'code'로 전환
-      if (!isProgrammaticUpdate.current) {
+      if (!isProgrammaticUpdateRef.current) {
         useUiStore.getState().setLastEditSource('code')
       }
       setCode(newCode)

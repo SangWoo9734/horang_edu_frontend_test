@@ -2,7 +2,7 @@ import type { Node as RFNode, Edge as RFEdge } from '@xyflow/react'
 import type { FlowNodeData } from '../../types/flowchart'
 
 type FlowNode = RFNode<FlowNodeData>
-type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'default' }
+type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'body' | 'default' }
 type FlowEdge = RFEdge<EdgeData>
 
 function buildMaps(nodes: FlowNode[], edges: FlowEdge[]) {
@@ -63,9 +63,9 @@ function nodeToCodeLine(node: FlowNode, depth: number): string {
   }
   if (d.nodeType === 'output') {
     const content = d.outputContent != null ? d.outputContent : d.label
-    // 따옴표 이미 포함된 경우 그대로, 아니면 감싸기
-    const quoted = content.startsWith('"') ? content : `"${content}"`
-    return `${indent}${quoted} 보여주기`
+    const isExpr = d.outputType === 'expr' || content.startsWith('"')
+    const formatted = isExpr ? content : `"${content}"`
+    return `${indent}${formatted} 보여주기`
   }
   if (d.nodeType === 'decision') {
     const cond = d.condition != null ? d.condition : d.label
@@ -141,24 +141,29 @@ function generateBlock(
     } else if (nodeType === 'loop') {
       lines.push(nodeToCodeLine(node, depth))
 
-      const bodyEdge = outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
+      // 'body' 태그 우선, 없으면 첫 번째 비-back 엣지 (사용자가 직접 그린 경우 fallback)
+      const bodyEdge =
+        outEdges.find((e) => (e.data as EdgeData)?.edgeType === 'body') ??
+        outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
       if (bodyEdge) {
         lines.push(...generateBlock(bodyEdge.target, outgoing, incoming, nodeMap, depth + 1, new Set(visited), new Set([...stopIds, currentId])))
       }
     } else if (nodeType === 'function') {
       lines.push(nodeToCodeLine(node, depth))
 
-      const bodyEdge = outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
+      const bodyEdge =
+        outEdges.find((e) => (e.data as EdgeData)?.edgeType === 'body') ??
+        outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
       if (bodyEdge) {
         lines.push(...generateBlock(bodyEdge.target, outgoing, incoming, nodeMap, depth + 1, new Set(visited), new Set([...stopIds, currentId])))
       }
       lines.push('') // 함수 선언 뒤 빈 줄
     }
 
-    // 다음 순차 엣지 탐색 (true/false/back 제외)
+    // 다음 순차 엣지 탐색 (back/true/false/body 제외)
     const nextEdge: FlowEdge | undefined = outEdges.find((e) => {
       const et = (e.data as EdgeData)?.edgeType
-      return et !== 'back' && et !== 'true' && et !== 'false'
+      return et !== 'back' && et !== 'true' && et !== 'false' && et !== 'body'
     })
     currentId = nextEdge?.target ?? null
   }
