@@ -1,17 +1,12 @@
 import Editor, { type Monaco, type OnMount } from '@monaco-editor/react'
 import { DalbitYaksokApplier, LANG_ID } from '@dalbit-yaksok/monaco-language-provider'
 import { useRef } from 'react'
-import type { editor } from 'monaco-editor'
 import { useEditorStore } from '../../stores/editor-store'
+import { editorInstanceRef } from './editor-ref'
 
 // Monaco 언어 등록은 한 번만
 const applier = new DalbitYaksokApplier('')
 let isLanguageRegistered = false
-
-// 외부(sync 등)에서 에디터 내용을 직접 제어하기 위한 ref export
-export const editorInstanceRef: { current: editor.IStandaloneCodeEditor | null } = {
-  current: null,
-}
 
 export default function CodeEditor() {
   const setCode = useEditorStore((s) => s.setCode)
