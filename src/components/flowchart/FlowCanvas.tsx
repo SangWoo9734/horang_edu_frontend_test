@@ -76,14 +76,18 @@ function FlowCanvasInner() {
     return () => clearTimeout(timer)
   }, [code, setNodes, setEdges, fitView])
 
-  // 실행 중인 노드 하이라이트
+  // 실행 중인 노드 하이라이트 + 진입 엣지 애니메이션
   useEffect(() => {
-    const current = useFlowchartStore.getState().nodes
-    setNodes(current.map((n) => ({
+    const { nodes: cur, edges: curEdges } = useFlowchartStore.getState()
+    setNodes(cur.map((n) => ({
       ...n,
       data: { ...n.data, executing: n.id === executingNodeId },
     })))
-  }, [executingNodeId, setNodes])
+    setEdges(curEdges.map((e) => ({
+      ...e,
+      animated: executingNodeId !== null && e.target === executingNodeId,
+    })))
+  }, [executingNodeId, setNodes, setEdges])
 
   // 순서도 변경 시 역방향 변환 (코드 업데이트)
   const triggerF2C = useCallback((nextNodes = nodes, nextEdges = edges) => {
