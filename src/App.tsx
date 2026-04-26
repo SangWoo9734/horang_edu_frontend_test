@@ -60,8 +60,8 @@ function TopNav({ activeNav, onNavChange, onHelp }: { activeNav: string; onNavCh
   const isPaused = status === 'paused'
   const isIdle = status === 'idle' || status === 'done' || status === 'error'
 
-  // 속도 슬라이더: 0~2000ms → 0~100% 역방향 표시
-  const speedPct = (100 - (executionDelay / 2000) * 100).toFixed(0)
+  // thumb 위치 = executionDelay / 2000 * 100%
+  const speedPct = ((executionDelay / 2000) * 100).toFixed(0)
 
   const navItems = ['학습하기', '순서도 실습']
 
