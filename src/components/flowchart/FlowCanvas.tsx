@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -10,8 +10,11 @@ import {
   type OnConnect,
   type OnNodesChange,
   type OnEdgesChange,
+  type OnNodesDelete,
+  type OnEdgesDelete,
   applyNodeChanges,
   applyEdgeChanges,
+  addEdge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -22,11 +25,17 @@ import LoopNode from './nodes/LoopNode'
 import OutputNode from './nodes/OutputNode'
 import FunctionNode from './nodes/FunctionNode'
 import AnimatedEdge from './edges/AnimatedEdge'
+import NodePalette from './NodePalette'
+import NodeEditModal from './NodeEditModal'
 
 import { useEditorStore } from '../../stores/editor-store'
 import { useFlowchartStore } from '../../stores/flowchart-store'
+import { useUiStore } from '../../stores/ui-store'
 import { parseAndConvert } from '../../lib/flowchart/ast-to-flow'
 import { applyLayout } from '../../lib/flowchart/layout'
+import { flowToCode } from '../../lib/flowchart/flow-to-code'
+import { editorInstanceRef } from '../editor/editor-ref'
+import type { FlowNodeType } from '../../types/flowchart'
 
 const nodeTypes: NodeTypes = {
   terminal: TerminalNode,
@@ -42,27 +51,24 @@ const edgeTypes: EdgeTypes = {
 }
 
 function FlowCanvasInner() {
-  const { fitView } = useReactFlow()
-
+  const { fitView, screenToFlowPosition } = useReactFlow()
   const code = useEditorStore((s) => s.code)
-  const { nodes, edges, setNodes, setEdges } = useFlowchartStore()
+  const setCode = useEditorStore((s) => s.setCode)
+  const { nodes, edges, executingNodeId, setNodes, setEdges } = useFlowchartStore()
+  const { openModal } = useUiStore()
 
-  const executingNodeId = useFlowchartStore((s) => s.executingNodeId)
-
-  // 코드 변경 시 순서도 업데이트 (Phase 6 SYN으로 debounce 추가 예정)
+  // 코드 변경 시 정방향 변환 (Phase 6에서 debounce + lastEditSource 추가)
+  const isFlowchartEdit = useRef(false)
   useEffect(() => {
-    if (!code) {
-      setNodes([])
-      setEdges([])
-      return
-    }
+    if (isFlowchartEdit.current) return
+    if (!code) { setNodes([]); setEdges([]); return }
+
     const graph = parseAndConvert(code)
     if (!graph) return
 
-    const { nodes: layoutNodes, edges: layoutEdges } = applyLayout(graph.nodes, graph.edges)
-    setNodes(layoutNodes)
-    setEdges(layoutEdges)
-
+    const { nodes: ln, edges: le } = applyLayout(graph.nodes, graph.edges)
+    setNodes(ln)
+    setEdges(le)
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
   }, [code, setNodes, setEdges, fitView])
 
@@ -75,25 +81,101 @@ function FlowCanvasInner() {
     })))
   }, [executingNodeId, setNodes])
 
+  // 순서도 변경 시 역방향 변환 (코드 업데이트)
+  const triggerF2C = useCallback((nextNodes = nodes, nextEdges = edges) => {
+    const generated = flowToCode(nextNodes, nextEdges)
+    if (!generated) return
+    isFlowchartEdit.current = true
+    setCode(generated)
+    editorInstanceRef.current?.setValue(generated)
+    // 다음 tick에 플래그 해제 (useEffect 무시용)
+    setTimeout(() => { isFlowchartEdit.current = false }, 0)
+  }, [nodes, edges, setCode])
+
   const onNodesChange: OnNodesChange = useCallback(
-    (changes) => setNodes(applyNodeChanges(changes, nodes) as typeof nodes),
+    (changes) => {
+      const next = applyNodeChanges(changes, nodes) as typeof nodes
+      setNodes(next)
+    },
     [nodes, setNodes],
   )
 
   const onEdgesChange: OnEdgesChange = useCallback(
-    (changes) => setEdges(applyEdgeChanges(changes, edges)),
+    (changes) => {
+      const next = applyEdgeChanges(changes, edges)
+      setEdges(next)
+    },
     [edges, setEdges],
   )
 
   const onConnect: OnConnect = useCallback(
     (connection) => {
-      setEdges([...edges, { ...connection, id: `e-${connection.source}-${connection.target}` }])
+      const next = addEdge({ ...connection, type: 'default' }, edges)
+      setEdges(next)
+      triggerF2C(nodes, next)
     },
-    [edges, setEdges],
+    [edges, nodes, setEdges, triggerF2C],
+  )
+
+  const onNodesDelete: OnNodesDelete = useCallback(
+    (deleted) => {
+      const ids = new Set(deleted.map((n) => n.id))
+      const next = nodes.filter((n) => !ids.has(n.id))
+      const nextEdges = edges.filter((e) => !ids.has(e.source) && !ids.has(e.target))
+      setNodes(next)
+      setEdges(nextEdges)
+      triggerF2C(next, nextEdges)
+    },
+    [nodes, edges, setNodes, setEdges, triggerF2C],
+  )
+
+  const onEdgesDelete: OnEdgesDelete = useCallback(
+    (deleted) => {
+      const ids = new Set(deleted.map((e) => e.id))
+      const next = edges.filter((e) => !ids.has(e.id))
+      setEdges(next)
+      triggerF2C(nodes, next)
+    },
+    [edges, nodes, setEdges, triggerF2C],
+  )
+
+  // 노드 더블클릭 → 수정 모달
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: { id: string }) => {
+      openModal(node.id)
+    },
+    [openModal],
+  )
+
+  // 팔레트 드래그 드롭
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      const nodeType = e.dataTransfer.getData('nodeType') as FlowNodeType
+      if (!nodeType) return
+
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const id = `user-${Date.now()}`
+      const newNode = {
+        id,
+        type: nodeType,
+        position,
+        data: { label: '...', nodeType },
+      }
+      setNodes([...nodes, newNode])
+      openModal(id)
+    },
+    [nodes, setNodes, openModal, screenToFlowPosition],
   )
 
   return (
-    <div style={{ width: '100%', height: '100%', background: '#0F0F1A' }}>
+    <div style={{ width: '100%', height: '100%', background: '#0F0F1A', position: 'relative' }}>
+      <NodePalette />
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -102,12 +184,19 @@ function FlowCanvasInner() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodesDelete={onNodesDelete}
+        onEdgesDelete={onEdgesDelete}
+        onNodeDoubleClick={onNodeDoubleClick}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         fitView
+        deleteKeyCode="Delete"
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#2A2A3E" gap={20} />
         <Controls />
       </ReactFlow>
+      <NodeEditModal />
     </div>
   )
 }
