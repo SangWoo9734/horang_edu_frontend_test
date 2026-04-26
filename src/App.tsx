@@ -9,6 +9,7 @@ import FlowCanvas from './components/flowchart/FlowCanvas'
 import ConsolePanel from './components/panels/ConsolePanel'
 import VariablePanel from './components/panels/VariablePanel'
 import Mascot from './components/Mascot'
+import HelpModal from './components/HelpModal'
 import { startExecution, stopExecution, pauseExecution, resumeExecution } from './lib/yaksok/runner'
 import { editorInstanceRef } from './components/editor/editor-ref'
 
@@ -52,7 +53,7 @@ function StatusChip() {
 }
 
 // ── 탑 네비 ─────────────────────────────────
-function TopNav({ activeNav, onNavChange }: { activeNav: string; onNavChange: (v: string) => void }) {
+function TopNav({ activeNav, onNavChange, onHelp }: { activeNav: string; onNavChange: (v: string) => void; onHelp: () => void }) {
   const status = useExecutionStore((s) => s.status)
   const { executionDelay, setExecutionDelay } = useExecutionStore()
   const isRunning = status === 'running'
@@ -162,6 +163,20 @@ function TopNav({ activeNav, onNavChange }: { activeNav: string; onNavChange: (v
 
         <div style={{ width: 1, height: 20, background: '#EEEDF8', margin: '0 4px' }}/>
 
+        {/* 도움말 버튼 */}
+        <button
+          onClick={onHelp}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 12px', borderRadius: 8,
+            border: '1.5px solid #C4B5FD', background: '#F3F2FA',
+            fontSize: 12, fontWeight: 700, color: '#4F46E5',
+            cursor: 'pointer', transition: 'all .15s',
+          }}
+        >
+          📖 사용 방법
+        </button>
+
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '5px 10px', borderRadius: 8,
@@ -215,6 +230,7 @@ function SmallBtn({ onClick, children }: { onClick: () => void; children: React.
 // ── App ─────────────────────────────────────
 export default function App() {
   const [activeNav, setActiveNav] = useState('학습하기')
+  const [helpOpen, setHelpOpen] = useState(false)
   const setCode = useEditorStore((s) => s.setCode)
   const status = useExecutionStore((s) => s.status)
   const executingLine = useEditorStore((s) => s.executingLine)
@@ -225,8 +241,9 @@ export default function App() {
     : undefined
 
   return (
+    <>
     <Layout
-      topNav={<TopNav activeNav={activeNav} onNavChange={setActiveNav}/>}
+      topNav={<TopNav activeNav={activeNav} onNavChange={setActiveNav} onHelp={() => setHelpOpen(true)}/>}
       mascot={<Mascot status={status} currentLine={currentLineText}/>}
       editor={
         <>
@@ -242,5 +259,7 @@ export default function App() {
       console={<ConsolePanel/>}
       variables={<VariablePanel/>}
     />
+    {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+    </>
   )
 }
