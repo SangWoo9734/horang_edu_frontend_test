@@ -3,7 +3,7 @@ import { StandardExtension } from '@dalbit-yaksok/standard'
 import { useEditorStore } from '../../stores/editor-store'
 import { useExecutionStore } from '../../stores/execution-store'
 import { useFlowchartStore } from '../../stores/flowchart-store'
-import { findNodeIdByLine } from '../flowchart/highlight'
+import { findNodeIdByLine, findDisconnectedNodeIds } from '../flowchart/highlight'
 
 let abortController: AbortController | null = null
 let currentSession: YaksokSession | null = null
@@ -16,6 +16,17 @@ export async function startExecution(): Promise<void> {
   const { setExecutingLine } = useEditorStore.getState()
 
   clearRuntime()
+
+  // 실행 전: 미연결 노드 감지 및 표시
+  const { nodes: currentNodes, edges: currentEdges, setNodes: setFlowNodes } = useFlowchartStore.getState()
+  const disconnectedIds = findDisconnectedNodeIds(currentNodes, currentEdges)
+  if (disconnectedIds.size > 0) {
+    setFlowNodes(currentNodes.map((n) => ({
+      ...n,
+      data: { ...n.data, disconnected: disconnectedIds.has(n.id) },
+    })))
+  }
+
   abortController = new AbortController()
 
   const session = new YaksokSession({
@@ -55,6 +66,9 @@ export async function startExecution(): Promise<void> {
     setExecutingLine(null)
     setExecutingNodeId(null)
     currentSession = null
+    // disconnected 플래그 초기화
+    const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
+    setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
   }
 }
 
