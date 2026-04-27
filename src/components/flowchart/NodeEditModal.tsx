@@ -130,7 +130,15 @@ const M = {
     border: '1.5px solid', borderColor: 'primary',
     bg: 'primaryLight', color: 'primary', transition: 'all 0.15s',
   }),
-  footer: css({ display: 'flex', justifyContent: 'flex-end', gap: '2', marginTop: '5' }),
+  footer: css({ display: 'flex', alignItems: 'center', gap: '2', marginTop: '5' }),
+  deleteBtn: css({
+    bg: 'white', color: '#EF4444',
+    paddingX: '3', paddingY: '1.5',
+    borderRadius: '99px', border: '1.5px solid #FCA5A5',
+    fontSize: '13px', fontWeight: '600',
+    cursor: 'pointer', fontFamily: 'ui',
+    marginRight: 'auto',
+  }),
   cancelBtn: css({
     bg: 'bgBase', color: 'textSub',
     paddingX: '4.5', paddingY: '1.5',
@@ -201,7 +209,7 @@ function formReducer(state: FormState, patch: Partial<FormState>): FormState {
 // ── 메인 모달 ────────────────────────────────
 export default function NodeEditModal() {
   const { modalOpen, modalNodeId, closeModal } = useUiStore()
-  const { nodes, updateNode, setNodes } = useFlowchartStore()
+  const { nodes, edges, updateNode, setNodes, setEdges } = useFlowchartStore()
 
   const node = modalNodeId ? nodes.find((n) => n.id === modalNodeId) : null
   const nodeType = node?.data.nodeType ?? 'process'
@@ -332,6 +340,22 @@ export default function NodeEditModal() {
     closeModal()
   }
 
+  const handleDelete = () => {
+    const nextNodes = nodes.filter((n) => n.id !== node.id)
+    const nextEdges = edges.filter((e) => e.source !== node.id && e.target !== node.id)
+    setNodes(nextNodes)
+    setEdges(nextEdges)
+    const generated = flowToCode(nextNodes, nextEdges)
+    if (generated) {
+      useUiStore.getState().setLastEditSource('flowchart')
+      isProgrammaticUpdateRef.current = true
+      editorInstanceRef.current?.setValue(generated)
+      isProgrammaticUpdateRef.current = false
+      useEditorStore.getState().setCode(generated)
+    }
+    closeModal()
+  }
+
   return (
     <div className={M.overlay} onClick={handleCancel}>
       <div className={M.panel} onClick={(e) => e.stopPropagation()}>
@@ -406,8 +430,13 @@ export default function NodeEditModal() {
           <CodePreview code={preview} />
 
           <div className={M.footer}>
+            {node.data.label !== '...' && (
+              <button type="button" className={M.deleteBtn} onClick={handleDelete}>삭제</button>
+            )}
             <button type="button" className={M.cancelBtn} onClick={handleCancel}>취소</button>
-            <button type="submit" className={M.submitBtn}>추가하기</button>
+            <button type="submit" className={M.submitBtn}>
+              {node.data.label === '...' ? '추가하기' : '저장하기'}
+            </button>
           </div>
         </form>
       </div>

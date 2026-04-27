@@ -243,7 +243,7 @@ function FlowCanvasInner() {
             onDragOver={onDragOver}
             onDrop={onDrop}
             fitView
-            deleteKeyCode="Delete"
+            deleteKeyCode={['Delete', 'Backspace']}
             proOptions={{ hideAttribution: true }}
           >
             <Background
