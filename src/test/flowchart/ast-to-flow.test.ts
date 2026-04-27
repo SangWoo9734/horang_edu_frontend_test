@@ -207,3 +207,53 @@ describe('ast-to-flow: 조건문 내부 노드 line 번호', () => {
     expect(falseOutput?.data.line).toBe(5)
   })
 })
+
+// ── 회귀 테스트: sourceHandle ────────────────────────────
+describe('회귀: decision sourceHandle', () => {
+  it('true 엣지는 sourceHandle이 "true"여야 한다', () => {
+    const code = '만약 점수 >= 90 이면\n\t"A" 보여주기\n아니면\n\t"B" 보여주기'
+    const result = parseAndConvert(code)!
+    const trueEdge = result.edges.find((e) => (e.data as { edgeType?: string })?.edgeType === 'true')
+    expect(trueEdge?.sourceHandle).toBe('true')
+  })
+
+  it('false 엣지는 sourceHandle이 "false"여야 한다', () => {
+    const code = '만약 점수 >= 90 이면\n\t"A" 보여주기\n아니면\n\t"B" 보여주기'
+    const result = parseAndConvert(code)!
+    const falseEdge = result.edges.find((e) => (e.data as { edgeType?: string })?.edgeType === 'false')
+    expect(falseEdge?.sourceHandle).toBe('false')
+  })
+
+  it('중첩 조건문에서 각 false 엣지가 올바른 sourceHandle을 가진다', () => {
+    const code = '만약 점수 >= 90 이면\n\t"A" 보여주기\n아니면\n\t만약 점수 >= 80 이면\n\t\t"B" 보여주기\n\t아니면\n\t\t"C" 보여주기'
+    const result = parseAndConvert(code)!
+    const falseEdges = result.edges.filter((e) => (e.data as { edgeType?: string })?.edgeType === 'false')
+    expect(falseEdges.length).toBeGreaterThan(0)
+    falseEdges.forEach((e) => expect(e.sourceHandle).toBe('false'))
+  })
+})
+
+// ── 회귀 테스트: funcbody 레이아웃 ──────────────────────
+describe('회귀: funcbody 본문 노드 분리', () => {
+  it('함수 본문의 조건 분기 노드들도 funcbody로 수집된다', () => {
+    const code = '약속, (점수) 등급 계산하기\n\t만약 점수 >= 90 이면\n\t\t"A" 보여주기\n\t아니면\n\t\t"B" 보여주기\n\n90 등급 계산하기'
+    const result = parseAndConvert(code)!
+    const funcBodyEdge = result.edges.find((e) => (e.data as { edgeType?: string })?.edgeType === 'funcbody')
+    expect(funcBodyEdge).toBeDefined()
+
+    // funcbody 직접 자식 (조건 노드)
+    const bodyEntryId = funcBodyEdge!.target
+    const bodyEntry = result.nodes.find((n) => n.id === bodyEntryId)
+    expect(bodyEntry?.data.nodeType).toBe('decision')
+
+    // 조건의 분기 노드들(A, B)이 존재한다
+    const trueEdge = result.edges.find(
+      (e) => e.source === bodyEntryId && (e.data as { edgeType?: string })?.edgeType === 'true'
+    )
+    const falseEdge = result.edges.find(
+      (e) => e.source === bodyEntryId && (e.data as { edgeType?: string })?.edgeType === 'false'
+    )
+    expect(trueEdge).toBeDefined()
+    expect(falseEdge).toBeDefined()
+  })
+})
