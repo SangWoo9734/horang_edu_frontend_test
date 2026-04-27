@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import type { FlowNodeData, AppFlowNode } from '../../../types/flowchart'
@@ -26,13 +27,18 @@ const label = css({
 
 export default function LoopNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
+  const [hovered, setHovered] = useState(false)
   const stroke = d.disconnected ? '#F97316' : col
   const strokeW = d.executing ? 2.5 : 1.5
   const fill = d.disconnected ? '#FFF7ED' : d.executing ? `${col}20` : '#fff'
   const dash = d.disconnected ? '6 3' : undefined
 
   return (
-    <div style={{ position: 'relative', width: W, height: H, opacity: d.disconnected ? 0.75 : 1 }}>
+    <div
+      style={{ position: 'relative', width: W, height: H, opacity: d.disconnected ? 0.75 : 1 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable}/>
       <svg width={W} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
         <polygon
@@ -47,6 +53,23 @@ export default function LoopNode({ data, isConnectable }: NodeProps<AppFlowNode>
         </span>
         <span className={label} style={{ color: d.executing ? col : '#1A1A2E' }}>{d.label}</span>
       </div>
+
+      {/* 반복 복귀 핸들 레이블 — 호버 시 표시 */}
+      {hovered && (
+        <div style={{
+          position: 'absolute',
+          top: '50%', right: '100%',
+          transform: 'translateY(-50%)',
+          marginRight: 6,
+          background: col, color: 'white',
+          fontSize: 9, fontWeight: 700,
+          padding: '2px 6px', borderRadius: 4,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+        }}>반복 복귀</div>
+      )}
+
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable}/>
       <Handle type="source" position={Position.Left} id="back" isConnectable={isConnectable}/>
     </div>
