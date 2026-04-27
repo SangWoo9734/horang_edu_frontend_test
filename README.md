@@ -107,8 +107,10 @@ docs/
 
 ## 문서
 
-- [기능 요구사항 명세](docs/requirements.md)
-- [아키텍처 문서](docs/architecture.md)
-- [프로젝트 회고](docs/retrospective.md)
-- [실행 하이라이트 타이밍 ADR](docs/decisions/execution-highlight-timing.md)
+- [기능 요구사항 명세](docs/요구사항.md)
+- [아키텍처 문서](docs/아키텍처.md)
+- [프로젝트 회고](docs/회고.md)
+- [ADR: 실행 노드 하이라이트 타이밍](docs/decisions/실행-노드-하이라이트-타이밍.md)
+- [ADR: funcbody 엣지 타입 분리](docs/decisions/함수-본문-엣지-타입-분리.md)
+- [ADR: 양방향 동기화 전략](docs/decisions/양방향-동기화-전략.md)
 - [에이전트 협업 기록](docs/agent/)
