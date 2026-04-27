@@ -6,10 +6,12 @@ interface ExecutionStore {
   consoleOutput: string[]
   variables: Record<string, unknown>
   executionDelay: number
+  isStepMode: boolean
   setStatus: (status: ExecutionStatus) => void
   appendConsole: (line: string) => void
   setVariable: (name: string, value: unknown) => void
   setExecutionDelay: (ms: number) => void
+  setIsStepMode: (v: boolean) => void
   clearRuntime: () => void
 }
 
@@ -18,7 +20,9 @@ export const useExecutionStore = create<ExecutionStore>((set) => ({
   consoleOutput: [],
   variables: {},
   executionDelay: 700,
+  isStepMode: false,
   setStatus: (status) => set({ status }),
+  setIsStepMode: (isStepMode) => set({ isStepMode }),
   appendConsole: (line) =>
     set((state) => ({ consoleOutput: [...state.consoleOutput, line] })),
   setVariable: (name, value) =>

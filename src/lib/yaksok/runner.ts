@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom'
 import { YaksokSession } from '@dalbit-yaksok/core'
 import { StandardExtension } from '@dalbit-yaksok/standard'
 import { useEditorStore } from '../../stores/editor-store'
@@ -9,38 +10,26 @@ let abortController: AbortController | null = null
 let currentSession: YaksokSession | null = null
 let cleanupTimer: ReturnType<typeof setTimeout> | null = null
 
-export async function startExecution(): Promise<void> {
-  const { code } = useEditorStore.getState()
-  const { executionDelay, setStatus, appendConsole, setVariable, clearRuntime } =
-    useExecutionStore.getState()
+function buildSession(stepMode = false): YaksokSession {
+  const { appendConsole, setVariable } = useExecutionStore.getState()
   const { setExecutingNodeId } = useFlowchartStore.getState()
   const { setExecutingLine } = useEditorStore.getState()
-
-  clearRuntime()
-  if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
-
-  // 실행 전: 미연결 노드 감지 및 표시
-  const { nodes: currentNodes, edges: currentEdges, setNodes: setFlowNodes } = useFlowchartStore.getState()
-  const disconnectedIds = findDisconnectedNodeIds(currentNodes, currentEdges)
-  if (disconnectedIds.size > 0) {
-    setFlowNodes(currentNodes.map((n) => ({
-      ...n,
-      data: { ...n.data, disconnected: disconnectedIds.has(n.id) },
-    })))
-  }
-
-  abortController = new AbortController()
 
   const session = new YaksokSession({
     stdout: (msg) => appendConsole(msg),
     stderr: (_msg, err) => appendConsole(`오류: ${err.message}`),
-    signal: abortController.signal,
+    signal: abortController!.signal,
     events: {
       runningCode: (start) => {
-        setExecutingLine(start.line)
-        const nodes = useFlowchartStore.getState().nodes
-        const nodeId = findNodeIdByLine(nodes, start.line)
-        setExecutingNodeId(nodeId)
+        flushSync(() => {
+          setExecutingLine(start.line)
+          const nodes = useFlowchartStore.getState().nodes
+          setExecutingNodeId(findNodeIdByLine(nodes, start.line))
+        })
+        // 스텝 모드에서는 runningCode 발생 시 stepping 상태로 전환
+        if (stepMode) {
+          useExecutionStore.getState().setStatus('stepping')
+        }
       },
       variableSet: ({ name, value }) => {
         setVariable(name, value.toPrint())
@@ -48,6 +37,46 @@ export async function startExecution(): Promise<void> {
     },
   })
 
+  if (stepMode) session.stepByStep = true
+
+  return session
+}
+
+function setupDisconnected() {
+  const { nodes, edges, setNodes } = useFlowchartStore.getState()
+  const disconnectedIds = findDisconnectedNodeIds(nodes, edges)
+  if (disconnectedIds.size > 0) {
+    setNodes(nodes.map((n) => ({
+      ...n,
+      data: { ...n.data, disconnected: disconnectedIds.has(n.id) },
+    })))
+  }
+}
+
+function scheduleCleanup(executionDelay: number) {
+  const { setExecutingNodeId } = useFlowchartStore.getState()
+  useEditorStore.getState().setExecutingLine(null)
+  currentSession = null
+
+  cleanupTimer = setTimeout(() => {
+    cleanupTimer = null
+    setExecutingNodeId(null)
+    const { nodes, setNodes } = useFlowchartStore.getState()
+    setNodes(nodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
+    useExecutionStore.getState().setIsStepMode(false)
+  }, executionDelay)
+}
+
+export async function startExecution(): Promise<void> {
+  const { code } = useEditorStore.getState()
+  const { executionDelay, setStatus, clearRuntime } = useExecutionStore.getState()
+
+  clearRuntime()
+  if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
+  setupDisconnected()
+
+  abortController = new AbortController()
+  const session = buildSession(false)
   await session.extend(new StandardExtension())
   session.addModule('main', code, { executionDelay })
   currentSession = session
@@ -58,24 +87,45 @@ export async function startExecution(): Promise<void> {
     setStatus('done')
   } catch (e) {
     const isAbort = e instanceof Error && (e.name === 'AbortError' || e.name === 'Abort')
-    if (isAbort) {
-      setStatus('idle')
-    } else {
-      appendConsole(`실행 오류: ${e instanceof Error ? e.message : String(e)}`)
+    if (isAbort) setStatus('idle')
+    else {
+      useExecutionStore.getState().appendConsole(`실행 오류: ${e instanceof Error ? e.message : String(e)}`)
       setStatus('error')
     }
   } finally {
-    setExecutingLine(null)
-    currentSession = null
-    // 마지막 실행 노드가 브라우저에 페인트될 수 있도록 다음 macrotask에서 클리어.
-    // executionDelay(setTimeout)가 노드 사이에 macrotask 경계를 만들어 하이라이트를 가능하게
-    // 하는 것과 같은 원리 — 마지막 노드 이후에도 동일한 경계를 하나 더 만든다.
-    cleanupTimer = setTimeout(() => {
-      cleanupTimer = null
-      setExecutingNodeId(null)
-      const { nodes: finalNodes, setNodes: setFN } = useFlowchartStore.getState()
-      setFN(finalNodes.map((n) => ({ ...n, data: { ...n.data, disconnected: false } })))
-    }, executionDelay)
+    scheduleCleanup(executionDelay)
+  }
+}
+
+export async function startStepExecution(): Promise<void> {
+  const { code } = useEditorStore.getState()
+  const { setStatus, clearRuntime, setIsStepMode } = useExecutionStore.getState()
+
+  clearRuntime()
+  if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
+  setupDisconnected()
+  setIsStepMode(true)
+
+  abortController = new AbortController()
+  const session = buildSession(true)
+  await session.extend(new StandardExtension())
+  // 스텝 모드는 delay 없이 — 사용자가 직접 속도를 제어
+  session.addModule('main', code, { executionDelay: 0 })
+  currentSession = session
+
+  setStatus('stepping')
+  try {
+    await session.runModule('main')
+    setStatus('done')
+  } catch (e) {
+    const isAbort = e instanceof Error && (e.name === 'AbortError' || e.name === 'Abort')
+    if (isAbort) setStatus('idle')
+    else {
+      useExecutionStore.getState().appendConsole(`실행 오류: ${e instanceof Error ? e.message : String(e)}`)
+      setStatus('error')
+    }
+  } finally {
+    scheduleCleanup(0)
   }
 }
 
@@ -91,5 +141,11 @@ export function pauseExecution(): void {
 
 export function resumeExecution(): Promise<void> {
   useExecutionStore.getState().setStatus('running')
+  return currentSession?.resume() ?? Promise.resolve()
+}
+
+// 스텝 모드: 다음 한 단계 실행
+export function stepNext(): Promise<void> {
+  // 다음 runningCode 이벤트까지 실행 → 자동으로 stepping 상태로 전환됨
   return currentSession?.resume() ?? Promise.resolve()
 }

@@ -1,1 +1,1 @@
-export type ExecutionStatus = 'idle' | 'running' | 'paused' | 'done' | 'error'
+export type ExecutionStatus = 'idle' | 'running' | 'paused' | 'stepping' | 'done' | 'error'

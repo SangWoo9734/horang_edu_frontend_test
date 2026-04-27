@@ -33,6 +33,8 @@ export default function Mascot({ status, currentLine }: MascotProps) {
   if (status === 'idle') msg = '코드를 쓰고 <b>▶ 실행하기</b>를 눌러봐요!'
   else if (status === 'running' && currentLine) msg = `지금 실행 중: <b>${currentLine}</b>`
   else if (status === 'running') msg = '열심히 실행 중이에요! 🚀'
+  else if (status === 'stepping' && currentLine) msg = `⏭ 단계별 실행 중: <b>${currentLine}</b> — 다음 단계를 눌러요!`
+  else if (status === 'stepping') msg = '⏭ 다음 단계 버튼을 눌러 한 칸씩 진행해요!'
   else if (status === 'paused') msg = '잠깐 멈췄어요. 계속하려면 ▶를 누르세요!'
   else if (status === 'done') msg = '🎉 실행이 끝났어요! 결과를 확인해봐요.'
   else if (status === 'error') msg = '❗ 오류가 생겼어요. 코드를 다시 확인해봐요!'
