@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { css, cx } from 'styled-system/css'
+import { css } from 'styled-system/css'
 import Layout from './app/layout'
 import { useExecutionStore } from './stores/execution-store'
 import { useEditorStore } from './stores/editor-store'
@@ -12,7 +12,7 @@ import ConsolePanel from './components/panels/ConsolePanel'
 import VariablePanel from './components/panels/VariablePanel'
 import Mascot from './components/Mascot'
 import HelpModal from './components/HelpModal'
-import { startExecution, stopExecution, pauseExecution, resumeExecution } from './lib/yaksok/runner'
+import { startExecution, startStepExecution, stopExecution, pauseExecution, resumeExecution, stepNext } from './lib/yaksok/runner'
 import { editorInstanceRef } from './components/editor/editor-ref'
 
 // ── 공통 스타일 ──────────────────────────────
@@ -71,6 +71,12 @@ const S = {
   divider: css({
     width: '1px', height: '20px',
     bg: 'border', marginX: '1',
+  }),
+  btnGroup: css({
+    display: 'flex', alignItems: 'center',
+    border: '1px solid', borderColor: 'border',
+    borderRadius: '10px', overflow: 'hidden',
+    bg: 'bgSubtle',
   }),
   helpBtn: css({
     display: 'flex', alignItems: 'center', gap: '1.5',
@@ -155,13 +161,14 @@ const chipBase = css({
   fontFamily: 'ui',
 })
 const CHIP_STYLES = {
-  idle:    { bg: 'token(colors.bgBase)',   color: 'token(colors.textMuted)' },
-  running: { bg: 'token(colors.bgActive)', color: 'token(colors.primary)' },
-  paused:  { bg: '#FEF9C3',               color: '#92400E' },
-  done:    { bg: '#DCFCE7',               color: '#166534' },
-  error:   { bg: '#FEE2E2',               color: '#991B1B' },
+  idle:     { bg: 'token(colors.bgBase)',   color: 'token(colors.textMuted)' },
+  running:  { bg: 'token(colors.bgActive)', color: 'token(colors.primary)' },
+  stepping: { bg: '#EDE9FE',               color: '#6D28D9' },
+  paused:   { bg: '#FEF9C3',               color: '#92400E' },
+  done:     { bg: '#DCFCE7',               color: '#166534' },
+  error:    { bg: '#FEE2E2',               color: '#991B1B' },
 }
-const CHIP_LABEL = { idle: '대기 중', running: '실행 중', paused: '일시정지', done: '완료', error: '오류' }
+const CHIP_LABEL = { idle: '대기 중', running: '실행 중', stepping: '단계별', paused: '일시정지', done: '완료', error: '오류' }
 
 function StatusChip() {
   const status = useExecutionStore((s) => s.status)
@@ -245,10 +252,12 @@ function ExampleDropdown({ onSelect }: { onSelect: (code: string) => void }) {
 // ── 탑 네비 ─────────────────────────────────
 function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExample: (code: string) => void }) {
   const status = useExecutionStore((s) => s.status)
+  const isStepMode = useExecutionStore((s) => s.isStepMode)
   const { executionDelay, setExecutionDelay } = useExecutionStore()
-  const isRunning = status === 'running'
   const isPaused = status === 'paused'
+  const isStepping = status === 'stepping'
   const isIdle = status === 'idle' || status === 'done' || status === 'error'
+  const isActive = !isIdle
   const SPEED_STEPS = [
     { label: '느림', delay: 1500 },
     { label: '보통', delay: 700 },
@@ -260,45 +269,76 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
     <nav className={S.nav}>
       <a className={S.logoLink} href="#">
         <Logo/>
-        <span className={S.logoText}>달빛약속</span>
+        <span className={S.logoText}>달빛흐름</span>
+        <span className={css({ fontSize: '10px', color: 'textMuted', fontFamily: 'ui', fontWeight: '500', marginLeft: '0.5' })}>
+          코드 ↔ 순서도 디버거
+        </span>
       </a>
 
       <div className={S.navRight}>
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
-          <span className={S.speedLabel}>속도</span>
-          {SPEED_STEPS.map(({ label, delay }) => (
+
+        {/* ① 속도 그룹 */}
+        {!isStepMode && (
+          <>
+            <span className={S.speedLabel}>속도</span>
+            <div className={S.btnGroup}>
+              {SPEED_STEPS.map(({ label, delay }, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={executionDelay === delay ? S.speedBtnActive : S.speedBtn}
+                  onClick={() => setExecutionDelay(delay)}
+                  style={{ borderRadius: 0, border: 'none', borderLeft: i === 0 ? 'none' : '1px solid #EEEDF8' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className={S.divider}/>
+          </>
+        )}
+
+        {/* ② 제어 그룹 */}
+        <div className={S.btnGroup}>
+          {isStepping && (
             <button
-              key={label}
-              type="button"
-              className={executionDelay === delay ? S.speedBtnActive : S.speedBtn}
-              onClick={() => setExecutionDelay(delay)}
+              className={S.ghostBtn}
+              onClick={() => stepNext()}
+              style={{ borderRadius: 0, border: 'none', background: '#EDE9FE', color: '#6D28D9', fontWeight: 700 }}
+            >⏭ 다음</button>
+          )}
+          {!isStepMode && (
+            <button
+              className={S.ghostBtn}
+              onClick={() => isPaused ? resumeExecution() : pauseExecution()}
+              disabled={isIdle}
+              style={{ borderRadius: 0, border: 'none', opacity: isIdle ? 0.4 : 1 }}
             >
-              {label}
+              {isPaused ? '▶ 계속' : '⏸ 멈춤'}
             </button>
-          ))}
+          )}
+          <button
+            className={S.ghostBtn}
+            onClick={stopExecution}
+            disabled={isIdle}
+            style={{ borderRadius: 0, border: 'none', borderLeft: '1px solid #EEEDF8', opacity: isIdle ? 0.4 : 1 }}
+          >⏹ 정지</button>
         </div>
 
-        <button
-          className={S.ghostBtn}
-          onClick={() => isPaused ? resumeExecution() : pauseExecution()}
-          disabled={isIdle}
-          style={{ cursor: isIdle ? 'not-allowed' : 'pointer', opacity: isIdle ? 0.4 : 1 }}
-        >
-          {isPaused ? '▶ 계속' : '⏸ 멈춤'}
-        </button>
+        <div className={S.divider}/>
 
+        {/* ③ 실행 시작 그룹 */}
         <button
-          className={S.ghostBtn}
-          onClick={stopExecution}
-          disabled={isIdle}
-          style={{ cursor: isIdle ? 'not-allowed' : 'pointer', opacity: isIdle ? 0.4 : 1 }}
-        >⏹</button>
-
+          className={S.primaryBtn}
+          onClick={() => startStepExecution()}
+          disabled={isActive}
+          style={{ opacity: isActive ? 0.45 : 1, background: '#7C3AED', cursor: isActive ? 'not-allowed' : 'pointer' }}
+        >⏭ 단계별</button>
         <button
-          className={cx(S.primaryBtn, css({ opacity: isRunning || isPaused ? 0.45 : 1 }))}
+          className={S.primaryBtn}
           onClick={() => startExecution()}
-          disabled={isRunning || isPaused}
-          style={{ cursor: isRunning || isPaused ? 'not-allowed' : 'pointer' }}
+          disabled={isActive}
+          style={{ opacity: isActive ? 0.45 : 1, cursor: isActive ? 'not-allowed' : 'pointer' }}
         >▶ 실행하기</button>
 
         <StatusChip/>
@@ -315,7 +355,7 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
           </svg>
-          달빛 학생
+          달빛흐름
         </div>
       </div>
 
