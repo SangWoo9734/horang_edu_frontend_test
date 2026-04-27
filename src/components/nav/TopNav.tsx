@@ -70,13 +70,6 @@ const S = {
     bg: 'bgBase', fontSize: '12px', fontWeight: '700',
     color: 'primary', fontFamily: 'ui', cursor: 'pointer',
   }),
-  userBadge: css({
-    display: 'flex', alignItems: 'center', gap: '1.5',
-    paddingX: '2.5', paddingY: '1.5', borderRadius: '8px',
-    border: '1px solid', borderColor: 'border',
-    bg: 'bgSubtle', fontSize: '12px', fontWeight: '500',
-    color: 'textMid', fontFamily: 'ui',
-  }),
   chipBase: css({
     display: 'inline-flex', alignItems: 'center', gap: '1',
     paddingX: '2.5', paddingY: '0.5',
@@ -307,12 +300,6 @@ export default function TopNav({ onHelp, onSelectExample }: TopNavProps) {
         <div className={S.divider}/>
         <ExampleDropdown onSelect={onSelectExample}/>
         <button className={S.helpBtn} onClick={onHelp}>📖 사용 방법</button>
-        <div className={S.userBadge}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-          </svg>
-          달빛흐름
-        </div>
       </div>
 
       <style>{`@keyframes chipPulse{0%,100%{opacity:1}50%{opacity:.6}}`}</style>
