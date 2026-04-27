@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { css } from 'styled-system/css'
 import { useExecutionStore } from '../../stores/execution-store'
 
@@ -17,10 +18,11 @@ const S = {
   empty: css({ color: 'textAccent', fontSize: '12px', padding: '1.5', fontFamily: 'ui' }),
   varRow: css({
     display: 'flex', alignItems: 'center',
-    paddingX: '2', paddingY: '0.5',
+    paddingX: '2', paddingY: '1',
     bg: 'bgSubtle', borderRadius: '6px',
     border: '1px solid', borderColor: 'border',
     gap: '1.5', minWidth: 0,
+    transition: 'background 0.2s',
   }),
   varName: css({
     color: 'primary', fontFamily: 'code',
@@ -32,13 +34,32 @@ const S = {
     fontSize: '12px', fontWeight: '600',
     marginLeft: 'auto',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-    maxWidth: '140px',
+    maxWidth: '180px',
   }),
 }
 
 export default function VariablePanel() {
   const variables = useExecutionStore((s) => s.variables)
   const entries = Object.entries(variables)
+
+  // 이전 값과 비교해서 방금 바뀐 변수 이름 추적
+  const prevRef = useRef<Record<string, unknown>>({})
+  const [changed, setChanged] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const prev = prevRef.current
+    const justChanged = new Set<string>()
+    for (const [name, value] of Object.entries(variables)) {
+      if (prev[name] !== value) justChanged.add(name)
+    }
+    prevRef.current = { ...variables }
+    if (justChanged.size === 0) return
+
+    // 다음 틱에 상태 변경 — effect 내 동기 setState 방지
+    const showTimer = setTimeout(() => setChanged(justChanged), 0)
+    const hideTimer = setTimeout(() => setChanged(new Set()), 650)
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer) }
+  }, [variables])
 
   return (
     <div className={S.root}>
@@ -52,10 +73,22 @@ export default function VariablePanel() {
           <span className={S.empty}>실행하면 변수가 여기 나타나요</span>
         ) : (
           entries.map(([name, value]) => (
-            <div key={name} className={S.varRow}>
+            <div
+              key={name}
+              className={S.varRow}
+              style={changed.has(name) ? {
+                background: '#FEF9C3',
+                borderColor: '#FDE047',
+              } : undefined}
+            >
               <span className={S.varName}>{name}</span>
               <span className={S.varEq}>=</span>
-              <span className={S.varValue}>{String(value)}</span>
+              <span
+                className={S.varValue}
+                style={changed.has(name) ? { color: '#92400E', fontWeight: 800 } : undefined}
+              >
+                {String(value)}
+              </span>
             </div>
           ))
         )}

@@ -61,7 +61,7 @@ export default function Layout({ topNav, mascot, editor, flowchart, console: con
             <div className={cx(panelCard, css({ flex: 1 }))}>
               {consolePanel}
             </div>
-            <div className={cx(panelCard, css({ width: '260px', flexShrink: 0 }))}>
+            <div className={cx(panelCard, css({ width: '320px', flexShrink: 0 }))}>
               {variables}
             </div>
           </div>
