@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm run prepare && pnpm run build",
+  "outputDirectory": "dist",
+  "framework": "vite"
+}
