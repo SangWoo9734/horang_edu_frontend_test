@@ -53,7 +53,12 @@ export default function OutputNode({ data, isConnectable }: NodeProps<AppFlowNod
           <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
             {d.disconnected ? '⚠️ 연결 끊김' : '출력'}
           </span>
-          {d.label}
+          {d.outputContent
+            ? d.outputType === 'string'
+              ? <span style={{ color: '#059669' }}>{d.outputContent}</span>
+              : <span style={{ color: '#0369A1', fontWeight: 800 }}>{d.outputContent}</span>
+            : d.label
+          }
         </span>
       </div>
       {hovered && <div style={flowHint('bottom')}>↓ 다음 노드</div>}

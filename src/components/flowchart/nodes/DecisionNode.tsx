@@ -18,6 +18,24 @@ const label = css({
   textAlign: 'center', paddingX: '4', wordBreak: 'break-all', lineHeight: '1.2',
 })
 
+const OP_RE = /^(>=|<=|!=|==|>|<|[+\-*/])$/
+
+function ConditionLabel({ text }: { text: string }) {
+  const tokens = text.trim().split(/\s+/)
+  return (
+    <>
+      {tokens.map((t, i) => {
+        const color = OP_RE.test(t) ? '#9CA3AF'
+          : /^-?\d+(\.\d+)?$/.test(t) ? '#DC2626'
+          : t.startsWith('"') ? '#059669'
+          : '#0369A1'
+        const bold = !OP_RE.test(t)
+        return <span key={i} style={{ color, fontWeight: bold ? 700 : 500 }}>{t}{i < tokens.length - 1 ? ' ' : ''}</span>
+      })}
+    </>
+  )
+}
+
 const handleLabel = (bg: string) => ({
   position: 'absolute' as const,
   top: '50%', transform: 'translateY(-50%)',
@@ -55,7 +73,9 @@ export default function DecisionNode({ data, isConnectable }: NodeProps<AppFlowN
         <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
           {d.disconnected ? '⚠️ 연결 끊김' : '조건'}
         </span>
-        <span className={label} style={{ color: d.executing ? col : '#1A1A2E' }}>{d.label}</span>
+        <span className={label} style={{ color: d.executing ? col : '#1A1A2E' }}>
+          {d.condition ? <ConditionLabel text={d.condition}/> : d.label}
+        </span>
       </div>
 
       {/* 핸들 레이블 — 호버 시 표시 */}

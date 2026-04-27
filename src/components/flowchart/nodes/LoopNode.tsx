@@ -25,6 +25,22 @@ const label = css({
   textAlign: 'center', wordBreak: 'break-all', lineHeight: '1.3',
 })
 
+const kw = { color: '#6B7280', fontWeight: 500 } as const
+const val = { color: '#0369A1', fontWeight: 800 } as const
+
+function LoopLabel({ d }: { d: FlowNodeData }) {
+  if (d.loopVariant === 'count' && d.loopCount != null) {
+    return <><span style={{ color: '#DC2626', fontWeight: 800 }}>{d.loopCount}</span><span style={kw}>번 반복</span></>
+  }
+  if (d.loopVariant === 'while' && d.loopCondition) {
+    return <><span>{d.loopCondition}</span><span style={kw}> 동안</span></>
+  }
+  if (d.loopVariant === 'list' && d.listVar) {
+    return <><span style={val}>{d.listVar}</span><span style={kw}> 의 </span><span style={val}>{d.itemVar}</span></>
+  }
+  return <>{d.label}</>
+}
+
 export default function LoopNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
   const [hovered, setHovered] = useState(false)
@@ -51,10 +67,11 @@ export default function LoopNode({ data, isConnectable }: NodeProps<AppFlowNode>
         <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
           {d.disconnected ? '⚠️ 연결 끊김' : '반복'}
         </span>
-        <span className={label} style={{ color: d.executing ? col : '#1A1A2E' }}>{d.label}</span>
+        <span className={label} style={{ color: d.executing ? col : '#1A1A2E' }}>
+          <LoopLabel d={d}/>
+        </span>
       </div>
 
-      {/* 반복 복귀 핸들 레이블 — 호버 시 표시 */}
       {hovered && (
         <div style={{
           position: 'absolute',

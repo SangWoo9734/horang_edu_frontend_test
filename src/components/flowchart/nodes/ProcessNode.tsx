@@ -27,6 +27,27 @@ const flowHint = (pos: 'top' | 'bottom') => ({
   opacity: 0.75,
 })
 
+function NodeLabel({ d }: { d: FlowNodeData }) {
+  if (d.processVariant === 'assign' && d.varName) {
+    return (
+      <>
+        <span style={{ color: '#0369A1', fontWeight: 800 }}>{d.varName}</span>
+        <span style={{ color: '#9CA3AF' }}> = </span>
+        <span>{d.varValue}</span>
+      </>
+    )
+  }
+  if (d.processVariant === 'func-call' && d.funcCallName) {
+    return (
+      <>
+        <span style={{ color: col }}>{d.funcCallName}</span>
+        {d.funcCallArgs && <span style={{ color: '#6B7280' }}> {d.funcCallArgs}</span>}
+      </>
+    )
+  }
+  return <>{d.label}</>
+}
+
 export default function ProcessNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
   const [hovered, setHovered] = useState(false)
@@ -50,7 +71,7 @@ export default function ProcessNode({ data, isConnectable }: NodeProps<AppFlowNo
       <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
         {d.disconnected ? '⚠️ 연결 끊김' : label}
       </span>
-      {d.label}
+      <NodeLabel d={d}/>
       {hovered && <div style={flowHint('bottom')}>↓ 다음 노드</div>}
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable}/>
     </div>

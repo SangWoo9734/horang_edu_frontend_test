@@ -51,7 +51,10 @@ export default function FunctionNode({ data, isConnectable }: NodeProps<AppFlowN
       <span className={badge} style={{ color: d.disconnected ? '#F97316' : col }}>
         {d.disconnected ? '⚠️ 연결 끊김' : '약속'}
       </span>
-      {d.label}
+      {d.funcName
+        ? <><span style={{ color: '#9CA3AF', fontWeight: 500 }}>약속: </span><span style={{ color: col, fontWeight: 800 }}>{d.funcName}</span></>
+        : d.label
+      }
       {hovered && <div style={flowHint('bottom')}>↓ 함수 본문</div>}
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable}/>
     </div>
