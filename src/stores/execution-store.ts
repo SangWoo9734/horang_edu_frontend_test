@@ -17,7 +17,7 @@ export const useExecutionStore = create<ExecutionStore>((set) => ({
   status: 'idle',
   consoleOutput: [],
   variables: {},
-  executionDelay: 500,
+  executionDelay: 700,
   setStatus: (status) => set({ status }),
   appendConsole: (line) =>
     set((state) => ({ consoleOutput: [...state.consoleOutput, line] })),

@@ -39,6 +39,20 @@ const S = {
     fontSize: '11px', fontWeight: '600',
     color: 'textSub', whiteSpace: 'nowrap', fontFamily: 'ui',
   }),
+  speedBtn: css({
+    paddingX: '2.5', paddingY: '1',
+    borderRadius: '8px', border: '1.5px solid', borderColor: 'border',
+    bg: 'bgSubtle', color: 'textSub',
+    fontSize: '11px', fontWeight: '600', fontFamily: 'ui',
+    cursor: 'pointer', transition: 'all 0.15s',
+  }),
+  speedBtnActive: css({
+    paddingX: '2.5', paddingY: '1',
+    borderRadius: '8px', border: '1.5px solid', borderColor: 'primary',
+    bg: 'primaryLight', color: 'primary',
+    fontSize: '11px', fontWeight: '700', fontFamily: 'ui',
+    cursor: 'pointer', transition: 'all 0.15s',
+  }),
   ghostBtn: css({
     display: 'flex', alignItems: 'center', gap: '1',
     paddingX: '2.5', paddingY: '1.5',
@@ -235,7 +249,12 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
   const isRunning = status === 'running'
   const isPaused = status === 'paused'
   const isIdle = status === 'idle' || status === 'done' || status === 'error'
-  const speedPct = ((executionDelay / 2000) * 100).toFixed(0)
+  const SPEED_STEPS = [
+    { label: '느림', delay: 1500 },
+    { label: '보통', delay: 700 },
+    { label: '빠름', delay: 300 },
+    { label: '매우빠름', delay: 80 },
+  ]
 
   return (
     <nav className={S.nav}>
@@ -247,13 +266,16 @@ function TopNav({ onHelp, onSelectExample }: { onHelp: () => void; onSelectExamp
       <div className={S.navRight}>
         <div className={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
           <span className={S.speedLabel}>속도</span>
-          <input
-            type="range" min={0} max={2000} step={100}
-            value={executionDelay}
-            onChange={(e) => setExecutionDelay(Number(e.target.value))}
-            className="speed-slider"
-            style={{ '--pct': `${speedPct}%` } as React.CSSProperties}
-          />
+          {SPEED_STEPS.map(({ label, delay }) => (
+            <button
+              key={label}
+              type="button"
+              className={executionDelay === delay ? S.speedBtnActive : S.speedBtn}
+              onClick={() => setExecutionDelay(delay)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <button
