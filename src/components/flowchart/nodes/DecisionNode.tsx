@@ -50,9 +50,9 @@ const handleLabel = (bg: string) => ({
 export default function DecisionNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
   const [hovered, setHovered] = useState(false)
-  const stroke = d.disconnected ? '#F97316' : col
-  const strokeW = d.executing ? 2.5 : 1.5
-  const fill = d.disconnected ? '#FFF7ED' : d.executing ? `${col}20` : '#fff'
+  const stroke = d.disconnected ? '#F97316' : d.error ? '#EF4444' : col
+  const strokeW = d.executing || d.error ? 2.5 : 1.5
+  const fill = d.disconnected ? '#FFF7ED' : d.error ? '#FEF2F2' : d.executing ? `${col}20` : '#fff'
   const dash = d.disconnected ? '6 3' : undefined
 
   return (
@@ -66,7 +66,7 @@ export default function DecisionNode({ data, isConnectable }: NodeProps<AppFlowN
         <polygon
           points="80,4 156,40 80,76 4,40"
           fill={fill} stroke={stroke} strokeWidth={strokeW} strokeDasharray={dash}
-          filter={d.executing ? `drop-shadow(0 0 8px ${col}60)` : `drop-shadow(0 2px 6px ${col}20)`}
+          filter={d.error ? 'drop-shadow(0 0 12px #EF444460)' : d.executing ? `drop-shadow(0 0 8px ${col}60)` : `drop-shadow(0 2px 6px ${col}20)`}
         />
       </svg>
       <div className={textLayer}>

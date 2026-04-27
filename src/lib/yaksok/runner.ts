@@ -53,6 +53,22 @@ function setupDisconnected() {
   }
 }
 
+function markErrorNode() {
+  const { executingNodeId, nodes, setNodes } = useFlowchartStore.getState()
+  if (!executingNodeId) return
+  setNodes(nodes.map((n) => ({
+    ...n,
+    data: { ...n.data, error: n.id === executingNodeId },
+  })))
+}
+
+function clearErrorNodes() {
+  const { nodes, setNodes } = useFlowchartStore.getState()
+  if (nodes.some((n) => n.data.error)) {
+    setNodes(nodes.map((n) => ({ ...n, data: { ...n.data, error: false } })))
+  }
+}
+
 function scheduleCleanup(executionDelay: number) {
   const { setExecutingNodeId } = useFlowchartStore.getState()
   useEditorStore.getState().setExecutingLine(null)
@@ -72,6 +88,7 @@ export async function startExecution(): Promise<void> {
   const { executionDelay, setStatus, clearRuntime } = useExecutionStore.getState()
 
   clearRuntime()
+  clearErrorNodes()
   if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
   setupDisconnected()
 
@@ -89,6 +106,7 @@ export async function startExecution(): Promise<void> {
     const isAbort = e instanceof Error && (e.name === 'AbortError' || e.name === 'Abort')
     if (isAbort) setStatus('idle')
     else {
+      markErrorNode()
       useExecutionStore.getState().appendConsole(`실행 오류: ${e instanceof Error ? e.message : String(e)}`)
       setStatus('error')
     }
@@ -102,6 +120,7 @@ export async function startStepExecution(): Promise<void> {
   const { setStatus, clearRuntime, setIsStepMode } = useExecutionStore.getState()
 
   clearRuntime()
+  clearErrorNodes()
   if (cleanupTimer !== null) { clearTimeout(cleanupTimer); cleanupTimer = null }
   setupDisconnected()
   setIsStepMode(true)
@@ -121,6 +140,7 @@ export async function startStepExecution(): Promise<void> {
     const isAbort = e instanceof Error && (e.name === 'AbortError' || e.name === 'Abort')
     if (isAbort) setStatus('idle')
     else {
+      markErrorNode()
       useExecutionStore.getState().appendConsole(`실행 오류: ${e instanceof Error ? e.message : String(e)}`)
       setStatus('error')
     }

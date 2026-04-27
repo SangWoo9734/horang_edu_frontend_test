@@ -20,7 +20,8 @@ export interface FlowNodeData extends Record<string, unknown> {
   line?: number;
   astNodeId?: string;
   executing?: boolean;
-  disconnected?: boolean; // 실행 흐름에서 끊긴 노드
+  disconnected?: boolean;
+  error?: boolean; // 이 노드에서 실행 오류 발생
 
   // 변수 할당 (process/assign)
   varName?: string;

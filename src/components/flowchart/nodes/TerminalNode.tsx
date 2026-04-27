@@ -34,10 +34,10 @@ export default function TerminalNode({ data, isConnectable }: NodeProps<AppFlowN
     <div
       className={base}
       style={{
-        background: d.disconnected ? '#FFF7ED' : d.executing ? `${col}20` : '#fff',
-        color: d.executing ? col : '#1A1A2E',
-        border: d.disconnected ? '1.5px dashed #F97316' : `${d.executing ? 2.5 : 1.5}px solid ${col}`,
-        boxShadow: d.disconnected ? 'none' : d.executing ? `0 0 10px ${col}50` : `0 2px 8px ${col}20`,
+        background: d.disconnected ? '#FFF7ED' : d.error ? '#FEF2F2' : d.executing ? `${col}20` : '#fff',
+        color: d.error ? '#DC2626' : d.executing ? col : '#1A1A2E',
+        border: d.disconnected ? '1.5px dashed #F97316' : d.error ? '2px solid #EF4444' : `${d.executing ? 2.5 : 1.5}px solid ${col}`,
+        boxShadow: d.disconnected ? 'none' : d.error ? '0 0 12px #EF444460' : d.executing ? `0 0 10px ${col}50` : `0 2px 8px ${col}20`,
         opacity: d.disconnected ? 0.75 : 1,
       }}
       onMouseEnter={() => setHovered(true)}
