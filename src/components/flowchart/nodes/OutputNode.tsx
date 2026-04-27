@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import type { FlowNodeData, AppFlowNode } from '../../../types/flowchart'
@@ -14,11 +15,31 @@ const inner = css({
 })
 const badge = css({ fontSize: '8px', display: 'block', fontWeight: '700', opacity: 0.65, marginBottom: '0.5' })
 
+const flowHint = (pos: 'top' | 'bottom') => ({
+  position: 'absolute' as const,
+  left: '50%', transform: 'translateX(-50%)',
+  ...(pos === 'top' ? { bottom: '100%', marginBottom: 4 } : { top: '100%', marginTop: 4 }),
+  background: '#1A1A2E', color: 'white',
+  fontSize: 9, fontWeight: 600,
+  padding: '2px 6px', borderRadius: 4,
+  whiteSpace: 'nowrap' as const,
+  pointerEvents: 'none' as const,
+  opacity: 0.75,
+})
+
 export default function OutputNode({ data, isConnectable }: NodeProps<AppFlowNode>) {
   const d = data as FlowNodeData
+  const [hovered, setHovered] = useState(false)
+
   return (
-    <div className={outer} style={{ opacity: d.disconnected ? 0.75 : 1 }}>
+    <div
+      className={outer}
+      style={{ opacity: d.disconnected ? 0.75 : 1 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable}/>
+      {hovered && <div style={flowHint('top')}>↑ 이전 노드</div>}
       <div
         className={inner}
         style={{
@@ -35,6 +56,7 @@ export default function OutputNode({ data, isConnectable }: NodeProps<AppFlowNod
           {d.label}
         </span>
       </div>
+      {hovered && <div style={flowHint('bottom')}>↓ 다음 노드</div>}
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable}/>
     </div>
   )

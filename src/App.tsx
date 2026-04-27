@@ -45,7 +45,7 @@ export default function App() {
         editor={
           <>
             <CardHeader
-              dotColor="token(colors.primary)"
+              dotColor="#706EEB"
               title="코드 작성"
               actions={<SmallBtn onClick={() => { setCode(''); editorInstanceRef.current?.setValue('') }}>초기화</SmallBtn>}
             />
