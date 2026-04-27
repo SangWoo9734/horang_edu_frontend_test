@@ -2,7 +2,7 @@ import type { Node as RFNode, Edge as RFEdge } from '@xyflow/react'
 import type { FlowNodeData } from '../../types/flowchart'
 
 type FlowNode = RFNode<FlowNodeData>
-type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'body' | 'default' }
+type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'body' | 'funcbody' | 'default' }
 type FlowEdge = RFEdge<EdgeData>
 
 function buildMaps(nodes: FlowNode[], edges: FlowEdge[]) {
@@ -175,7 +175,7 @@ function generateBlock(
       lines.push(nodeToCodeLine(node, depth))
 
       const bodyEdge =
-        outEdges.find((e) => (e.data as EdgeData)?.edgeType === 'body') ??
+        outEdges.find((e) => (e.data as EdgeData)?.edgeType === 'funcbody') ??
         outEdges.find((e) => (e.data as EdgeData)?.edgeType !== 'back')
       if (bodyEdge) {
         lines.push(...generateBlock(bodyEdge.target, outgoing, incoming, nodeMap, depth + 1, new Set(visited), new Set([...stopIds, currentId])))
@@ -186,7 +186,7 @@ function generateBlock(
     // 다음 순차 엣지 탐색 (back/true/false/body 제외)
     const nextEdge: FlowEdge | undefined = outEdges.find((e) => {
       const et = (e.data as EdgeData)?.edgeType
-      return et !== 'back' && et !== 'true' && et !== 'false' && et !== 'body'
+      return et !== 'back' && et !== 'true' && et !== 'false' && et !== 'body' && et !== 'funcbody'
     })
     currentId = nextEdge?.target ?? null
   }

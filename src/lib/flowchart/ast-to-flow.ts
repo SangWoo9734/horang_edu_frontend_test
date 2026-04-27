@@ -25,7 +25,7 @@ interface Ctx {
 
 interface EdgeOpts {
   label?: string
-  edgeType?: 'true' | 'false' | 'back' | 'body'
+  edgeType?: 'true' | 'false' | 'back' | 'body' | 'funcbody'
 }
 
 function uid(ctx: Ctx): string {
@@ -187,8 +187,8 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
       astNodeId: id,
     })
     for (const from of fromIds) addEdge(ctx, from, id, edgeOpts)
-    // 함수 본문도 전개
-    const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'body' })
+    // 함수 본문은 funcbody 엣지로 연결 — dagre 및 렌더링에서 제외하여 옆에 별도 배치
+    const bodyTails = convertBlock(node.body, [id], ctx, { edgeType: 'funcbody' })
     for (const tail of bodyTails) addEdge(ctx, tail, id, { edgeType: 'back' })
     return [id]
   }

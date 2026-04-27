@@ -15,8 +15,9 @@ export default function AnimatedEdge({
   const isTrue = edgeType === 'true'
   const isFalse = edgeType === 'false'
   const isBack = edgeType === 'back'
+  const isFuncBody = edgeType === 'funcbody'
 
-  if (isBack) return null  // back 엣지는 렌더링하지 않음 (flow-to-code용으로 state만 유지)
+  if (isBack || isFuncBody) return null  // back/funcbody 엣지는 렌더링하지 않음 (flow-to-code용으로 state만 유지)
 
   const stroke = isTrue ? '#4ADE80' : isFalse ? '#F87171' : '#94A3B8'
   const strokeDash = isFalse ? '6 4' : undefined
