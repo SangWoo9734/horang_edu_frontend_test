@@ -65,8 +65,11 @@ export default function CodeEditor() {
       rules: [
         { token: 'keyword', foreground: '4F46E5', fontStyle: 'bold' },
         { token: 'tag', foreground: '4F46E5', fontStyle: 'bold' },  // CALLABLE (FunctionInvoke)
+        { token: 'variable.name', foreground: '0369A1', fontStyle: 'bold' }, // 변수 선언
+        { token: 'identifier', foreground: '0369A1' },               // 변수 참조
         { token: 'string', foreground: '059669' },
         { token: 'number', foreground: 'DC2626' },
+        { token: 'operators', foreground: '9CA3AF' },
       ],
       colors: {
         'editor.background': '#FFFFFF',
