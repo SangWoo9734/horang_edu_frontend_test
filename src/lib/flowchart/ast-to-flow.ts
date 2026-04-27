@@ -37,10 +37,15 @@ function addNode(ctx: Ctx, id: string, data: FlowNodeData): void {
 }
 
 function addEdge(ctx: Ctx, source: string, target: string, opts: EdgeOpts = {}): void {
+  const sourceHandle = opts.edgeType === 'true' ? 'true'
+    : opts.edgeType === 'false' ? 'false'
+    : opts.edgeType === 'back' ? 'back'
+    : undefined
   ctx.edges.push({
     id: `e-${source}-${target}-${ctx.counter}`,
     source,
     target,
+    sourceHandle,
     label: opts.label,
     data: { edgeType: opts.edgeType ?? 'default' },
     animated: false,
@@ -73,9 +78,13 @@ function convertBlock(block: Block, fromIds: string[], ctx: Ctx, entryOpts: Edge
 function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeOpts = {}): string[] {
   if (node instanceof SetVariable) {
     const id = uid(ctx)
+    const varVal = tokenLabel(node.value)
     addNode(ctx, id, {
-      label: `${node.name} = ${tokenLabel(node.value)}`,
+      label: `${node.name} = ${varVal}`,
       nodeType: 'process',
+      processVariant: 'assign',
+      varName: node.name,
+      varValue: varVal,
       line: getLine(node),
       astNodeId: id,
     })
@@ -111,6 +120,7 @@ function convertNode(node: AstNode, fromIds: string[], ctx: Ctx, edgeOpts: EdgeO
     addNode(ctx, decId, {
       label: condLabel,
       nodeType: 'decision',
+      condition: condLabel,
       line: getLine(node),
       astNodeId: decId,
     })
