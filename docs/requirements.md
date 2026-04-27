@@ -2,7 +2,7 @@
 
 > 기반 문서: `docs/agent/상세-기획서.md`, `docs/agent/01-초기-아이디에이션-및-방향-설정.md`  
 > ID 형식: `REQ-{영역}-{번호}`  
-> 마지막 업데이트: 2026-04-26
+> 마지막 업데이트: 2026-04-27
 
 ---
 
@@ -28,7 +28,7 @@
 ## REQ-LAY: 레이아웃
 
 ### REQ-LAY-01: 4분할 패널 구조
-- 상단 헤더: 로고 + 실행 컨트롤 + 속도 슬라이더 + 도움말 버튼
+- 상단 헤더: 로고 + 실행 컨트롤 + 속도 4단계 버튼 + 도움말 버튼
 - 좌상: 코드 에디터 (Monaco)
 - 우상: 순서도 캔버스 (React Flow)
 - 좌하: 실행 결과 콘솔
@@ -39,13 +39,18 @@
 ### REQ-LAY-02: 패널 비율
 - 좌/우 비율: 1:1 (각 flex: 1)
 - 상(에디터/캔버스) : 하(콘솔/변수) = 약 7:3
-- 콘솔 패널: flex: 1, 변수 패널: width 260px 고정
+- 콘솔 패널: flex: 1, 변수 패널: width 320px 고정
 
 ### REQ-LAY-03: 헤더
-- 좌: 달빛약속 로고 + 서비스명
-- 우: 속도 슬라이더, [⏸ 멈춤] [⏹ 정지] [▶ 실행하기] 버튼, 상태 칩, [📖 사용 방법]
-- 실행 중이 아닐 때: 멈춤·정지 버튼 비활성화
-- 실행 중일 때: 실행하기 버튼 비활성화
+- 좌: 달빛약속 로고 + 서비스명 ("달빛흐름")
+- 우 (3 그룹):
+  1. **속도 그룹** (단계별 모드에서 숨김): 속도 레이블 + 느림/보통/빠름/매우빠름 4단계 토글 버튼
+  2. **실행 제어 그룹**: [⏭ 다음] (단계별 모드 중만) [⏸ 멈춤/▶ 계속] (일반 모드만) [⏹ 정지]
+  3. **시작 그룹**: [⏭ 단계별] [▶ 실행하기] + 상태 칩
+  4. **유틸**: [예제 코드 ▾] [📖 사용 방법]
+- 실행 중이 아닐 때: 멈춤·정지·다음 버튼 비활성화
+- 실행 중일 때: 실행하기·단계별 버튼 비활성화
+- 상태 칩: idle/running/paused/stepping/done/error 6종
 
 ### REQ-LAY-04: 양방향 동기화 표시 배지 (SyncBadge)
 - 에디터/순서도 패널 사이 정중앙에 절대 위치
@@ -129,8 +134,11 @@
 | IfStatement 거짓 | `false` | `#F87171` | 점선 |
 | 반복 본문 진입 | `body` | `#94A3B8` | 실선 |
 | 반복 복귀 | `back` | — | **렌더링 안 함** (RF state는 유지) |
+| 함수 선언 본문 | `funcbody` | `#C4B5FD` | 보라 점선 bezier |
 
-- back 엣지는 `AnimatedEdge`에서 `return null` 처리 → flow-to-code 동작용으로만 존재
+- `back` 엣지는 `AnimatedEdge`에서 `return null` 처리 → flow-to-code 동작용으로만 존재
+- `funcbody` 엣지는 dagre 배치에서 제외; body 노드는 함수 노드 왼쪽에 수동 배치
+- `funcbody` 엣지는 "소속" 관계를 표현하며 순차 흐름으로 해석하지 않음
 
 ### REQ-C2F-04: 루프 엣지 구조
 - Loop 노드에서 body 노드로: `edgeType: 'body'`
@@ -161,16 +169,20 @@
 
 | 타입 | 컴포넌트 | 모양 | 색상 | 상단 뱃지 |
 |------|----------|------|------|-----------|
-| `terminal` | TerminalNode | 둥근 사각형 | `#6B7280` | "단말" |
+| `terminal` | TerminalNode | 둥근 사각형 | `#6366F1` (반환: `#F87171`) | "단말" |
 | `process`/assign | ProcessNode | 사각형 | `#3B82F6` | "변수" |
 | `process`/func-call | ProcessNode | 사각형 | `#3B82F6` | "호출" |
 | `decision` | DecisionNode | 마름모 (SVG) | `#F59E0B` | "조건" |
 | `loop` | LoopNode | 육각형 (SVG) | `#10B981` | "반복" |
 | `output` | OutputNode | 평행사변형 | `#8B5CF6` | "출력" |
-| `function` | FunctionNode | 둥근 사각형 | `#6366F1` | "약속" |
+| `function` | FunctionNode | 이중 테두리 사각형 | `#6366F1` | "약속" |
 
 - 실행 중(`executing: true`): 테두리 굵어짐 + glow 효과
 - 미연결(`disconnected: true`): 주황 점선 테두리 + `⚠️ 연결 끊김` 뱃지 + 0.75 opacity
+- **호버 시 핸들 방향 힌트 표시**: 각 노드 호버 시 연결 방향 레이블 노출
+  - ProcessNode/OutputNode/FunctionNode/TerminalNode: `↑ 이전 노드` / `↓ 다음 노드`
+  - DecisionNode: `참` (Left) / `거짓` (Right)
+  - LoopNode: `반복 복귀` (Left)
 
 ### REQ-FLW-03: Decision 노드 핸들
 - 입력: Top
@@ -220,6 +232,8 @@
 - 필드별 실시간 유효성 검사 + 에러 메시지 표시
 - 코드 미리보기: 입력값에서 생성될 달빛약속 코드 실시간 표시
 - 취소 시 새로 드롭된 노드 제거
+- 기존 노드 편집 시 [삭제] 버튼 표시 → 노드 및 연결 엣지 제거 후 F2C 동기화
+- 저장 버튼 텍스트: 신규 드롭 시 "추가하기" / 기존 편집 시 "저장하기"
 
 ### REQ-FLW-07: 노드·엣지 편집
 - 노드 핸들 드래그 → 엣지 생성 → F2C 동기화
@@ -250,10 +264,17 @@
 - 완료: `status = 'done'`, 오류: `status = 'error'`
 - finally: `executingLine`, `executingNodeId` null 초기화, disconnected 플래그 해제
 
-### REQ-RUN-05: 실행 속도 슬라이더
-- 범위: 0ms ~ 2000ms (기본 500ms)
-- 커스텀 CSS: `--pct` CSS 변수로 thumb 위치에 맞춰 fill 표시
-- 실시간 반영
+### REQ-RUN-05: 실행 속도 버튼
+- 4단계 토글 버튼: 느림(1500ms) / 보통(700ms) / 빠름(300ms) / 매우빠름(80ms)
+- 기본값: 보통 (700ms)
+- 단계별 실행 모드(REQ-RUN-06)에서는 속도 버튼 그룹 숨김
+
+### REQ-RUN-06: 단계별 실행
+- [⏭ 단계별] 클릭 → `YaksokSession.stepByStep = true` 설정 후 실행 시작
+- `runningCode` 이벤트 발생 시 `status = 'stepping'` → 실행 일시 정지 상태
+- [⏭ 다음] 클릭 → `session.resume()` → 다음 노드로 진행
+- `executionDelay: 0` (속도 제어는 사용자가 "다음" 클릭으로 직접 조절)
+- `isStepMode: true`일 때 속도 그룹 숨김, 멈춤/계속 버튼 숨김
 
 ---
 
@@ -271,6 +292,7 @@
 - `variableSet` 이벤트 수신 → `value.toPrint()` 로 문자열 변환 (`.toString()` 아님)
 - `변수명 = 값` 목록 표시
 - 실행 시작 시 패널 초기화
+- **갱신 플래시**: 값이 바뀐 변수 행에 650ms 동안 노란 배경(`#FEF9C3`) + 굵은 글씨 표시
 
 ### REQ-VIZ-04: 콘솔 패널 (`ConsolePanel.tsx`)
 - 출력을 줄 단위로 표시, 최신이 하단
@@ -355,13 +377,16 @@
 - 기존 값으로 pre-fill된 `NodeEditModal` 열림
 
 ### REQ-UX-03: 노드/엣지 삭제
-- `Delete` 키 → 노드 및 연결 엣지 삭제 → F2C 동기화
+- `Delete` 또는 `Backspace` 키 → 노드 및 연결 엣지 삭제 → F2C 동기화
+- NodeEditModal 내 [삭제] 버튼 → 동일 동작 (기존 노드 편집 시에만 표시)
 
 ### REQ-UX-04: 캔버스 fitView
 - 코드→순서도 변환 완료 후 `fitView({ padding: 0.2, duration: 300 })`
 
 ### REQ-UX-05: 도움말 모달
-- [📖 사용 방법] 클릭 → `HelpModal` 표시
+- **최초 방문 시 자동 표시** → `localStorage('dalbit-help-seen')` 없으면 자동 오픈
+- 닫으면 `localStorage`에 기록 → 재방문 시 미표시
+- [📖 사용 방법] 클릭으로도 언제든 열 수 있음
 - 4개 탭: 시작하기, 노드 종류 (8가지), 코드 작성, 자주 묻는 질문
 
 ---
@@ -391,11 +416,12 @@
 ### REQ-STR-03: execution-store
 ```typescript
 {
-  status: 'idle' | 'running' | 'paused' | 'done' | 'error'
+  status: 'idle' | 'running' | 'paused' | 'stepping' | 'done' | 'error'
   consoleOutput: string[]
   variables: Record<string, string>   // value.toPrint() 결과
-  executionDelay: number              // 0~2000ms, 기본 500
-  setStatus, appendConsole, setVariable, clearRuntime, setExecutionDelay
+  executionDelay: number              // 기본 700ms (4단계 버튼으로 조절)
+  isStepMode: boolean                 // 단계별 실행 모드 여부
+  setStatus, appendConsole, setVariable, clearRuntime, setExecutionDelay, setIsStepMode
 }
 ```
 
@@ -455,7 +481,7 @@ interface FlowNodeData extends Record<string, unknown> {
 
 ### REQ-TYP-02: EdgeData
 ```typescript
-type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'body' | 'default' }
+type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'body' | 'funcbody' | 'default' }
 ```
 
 ---
@@ -483,4 +509,4 @@ type EdgeData = { edgeType?: 'true' | 'false' | 'back' | 'body' | 'default' }
 - 코드 저장/불러오기 (파일 시스템)
 - `getAutocomplete()` 자동완성
 - 노드 수동 위치 조정 및 persist
-- 예제 코드 드롭다운 (lessons.ts 데이터는 있으나 UI 미연결)
+- 브레이크포인트 (특정 노드에서 자동 일시정지)
