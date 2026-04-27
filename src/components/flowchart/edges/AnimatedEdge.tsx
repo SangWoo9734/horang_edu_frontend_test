@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, getStraightPath, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, type EdgeProps } from '@xyflow/react'
 
 export default function AnimatedEdge({
   id,
@@ -17,7 +17,19 @@ export default function AnimatedEdge({
   const isBack = edgeType === 'back'
   const isFuncBody = edgeType === 'funcbody'
 
-  if (isBack || isFuncBody) return null  // back/funcbody 엣지는 렌더링하지 않음 (flow-to-code용으로 state만 유지)
+  if (isBack) return null  // back 엣지는 렌더링하지 않음 (flow-to-code용으로 state만 유지)
+
+  // funcbody 엣지: 함수 본문 소속 표시용 — 화살표 없는 점선으로 약하게 연결
+  if (isFuncBody) {
+    const [path] = getBezierPath({ sourceX, sourceY, targetX, targetY })
+    return (
+      <BaseEdge
+        id={id}
+        path={path}
+        style={{ stroke: '#C4B5FD', strokeWidth: 1, strokeDasharray: '4 4' }}
+      />
+    )
+  }
 
   const stroke = isTrue ? '#4ADE80' : isFalse ? '#F87171' : '#94A3B8'
   const strokeDash = isFalse ? '6 4' : undefined
