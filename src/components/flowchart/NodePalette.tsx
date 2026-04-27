@@ -25,7 +25,7 @@ const ITEMS: PaletteItem[] = [
 const S = {
   palette: css({
     width: '58px', bg: 'bgSubtle',
-    borderRight: '1px solid', borderColor: 'bgBase',
+    borderRight: '1px solid', borderColor: 'border',
     display: 'flex', flexDirection: 'column',
     alignItems: 'center', paddingY: '1.5',
     gap: '1', flexShrink: 0, overflowY: 'auto',
