@@ -126,12 +126,45 @@ describe('ast-to-flow: 반복 (loop)', () => {
   })
 })
 
+// ── 목록 반복 ──────────────────────────────────────────────
+describe('ast-to-flow: 목록 반복 (loop/list)', () => {
+  it('ListLoop → loop 노드, loopVariant: list', () => {
+    const code = '과일들 = ["사과", "바나나"]\n반복 과일들 의 과일 마다\n\t과일 보여주기'
+    const loops = nodesByType(code, 'loop')
+    expect(loops.some((n) => n.data.loopVariant === 'list')).toBe(true)
+  })
+})
+
 // ── 함수 ──────────────────────────────────────────────────
 describe('ast-to-flow: 함수 선언 (function)', () => {
   it('DeclareFunction → function 노드 생성', () => {
     const code = '약속, 인사하기\n\t"안녕" 보여주기'
     const funcs = nodesByType(code, 'function')
     expect(funcs).toHaveLength(1)
+  })
+
+  it('DeclareFunction 본문은 funcbody 엣지로 연결된다', () => {
+    const code = '약속, 인사하기\n\t"안녕" 보여주기'
+    const result = parseAndConvert(code)!
+    const funcBodyEdge = result.edges.find(
+      (e) => (e.data as { edgeType?: string })?.edgeType === 'funcbody'
+    )
+    expect(funcBodyEdge).toBeDefined()
+  })
+
+  it('함수 본문 노드가 순서 흐름(sequential)에 포함되지 않는다', () => {
+    // 함수 본문은 funcbody로 분리되므로, 함수 선언 이후 sequential 엣지는 함수 호출로 이어져야 함
+    const code = '약속, 인사하기\n\t"안녕" 보여주기\n\n인사하기'
+    const result = parseAndConvert(code)!
+    const funcNode = result.nodes.find((n) => n.data.nodeType === 'function')!
+    const seqEdge = result.edges.find(
+      (e) => e.source === funcNode.id &&
+        (e.data as { edgeType?: string })?.edgeType === 'default'
+    )
+    // 함수 선언 → 함수 호출로 이어지는 sequential 엣지가 존재해야 함
+    expect(seqEdge).toBeDefined()
+    const targetNode = result.nodes.find((n) => n.id === seqEdge!.target)
+    expect(targetNode?.data.processVariant).toBe('func-call')
   })
 })
 
