@@ -39,7 +39,6 @@ function addNode(ctx: Ctx, id: string, data: FlowNodeData): void {
 function addEdge(ctx: Ctx, source: string, target: string, opts: EdgeOpts = {}): void {
   const sourceHandle = opts.edgeType === 'true' ? 'true'
     : opts.edgeType === 'false' ? 'false'
-    : opts.edgeType === 'back' ? 'back'
     : undefined
   ctx.edges.push({
     id: `e-${source}-${target}-${ctx.counter}`,
