@@ -33,16 +33,16 @@ export default function Layout({
   syncBadge,
 }: LayoutProps) {
   return (
+    <div className={css({ height: '100vh', overflowX: 'auto', overflowY: 'hidden' })}>
     <div
       className={css({
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100%",
         bg: "bgBase",
         color: "textPrimary",
         fontFamily: "ui",
         minWidth: "1054px",
-        overflow: "hidden",
       })}
     >
       <header className={css({ flexShrink: 0, zIndex: 20 })}>{topNav}</header>
@@ -101,6 +101,7 @@ export default function Layout({
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
