@@ -13,7 +13,14 @@ import { CardHeader, SmallBtn } from './components/ui/CardHeader'
 import { editorInstanceRef } from './components/editor/editor-ref'
 
 export default function App() {
-  const [helpOpen, setHelpOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(() => {
+    return !localStorage.getItem('dalbit-help-seen')
+  })
+
+  const handleCloseHelp = useCallback(() => {
+    localStorage.setItem('dalbit-help-seen', '1')
+    setHelpOpen(false)
+  }, [])
   const setCode = useEditorStore((s) => s.setCode)
 
   const handleSelectExample = useCallback((code: string) => {
@@ -49,7 +56,7 @@ export default function App() {
         console={<ConsolePanel/>}
         variables={<VariablePanel/>}
       />
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)}/>}
+      {helpOpen && <HelpModal onClose={handleCloseHelp}/>}
     </>
   )
 }
